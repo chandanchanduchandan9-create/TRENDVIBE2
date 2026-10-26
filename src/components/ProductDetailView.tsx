@@ -1,0 +1,474 @@
+import React, { useState, useEffect } from 'react';
+import { Product, SellerDocument } from '../types/index.ts';
+import { useApp } from '../context/AppContext.tsx';
+import { api } from '../services/api.ts';
+import {
+  ArrowLeft,
+  Sparkles,
+  ShoppingBag,
+  Zap,
+  ShieldCheck,
+  Instagram,
+  Copy,
+  Check,
+  Share2,
+  FileText,
+  Clock,
+  RotateCcw,
+  Truck,
+  AlertCircle,
+  ExternalLink,
+  MessageSquare,
+} from 'lucide-react';
+
+interface ProductDetailViewProps {
+  productId: string;
+  onBack: () => void;
+}
+
+export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId, onBack }) => {
+  const { addToCart, startCallingZyro, openEnquiryModal, showToast, setActiveTab } = useApp();
+
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string>('');
+  const [selectedVariantId, setSelectedVariantId] = useState<string | undefined>();
+  const [quantity, setQuantity] = useState(1);
+  const [copiedLink, setCopiedLink] = useState(false);
+  const [copiedEnquiry, setCopiedEnquiry] = useState(false);
+  const [attachedDocs, setAttachedDocs] = useState<SellerDocument[]>([]);
+  const [selectedDocPreview, setSelectedDocPreview] = useState<SellerDocument | null>(null);
+
+  useEffect(() => {
+    async function loadProduct() {
+      setLoading(true);
+      try {
+        const prod = await api.getProductById(productId);
+        setProduct(prod);
+        setSelectedImage(prod.images[0] || '');
+        if (prod.variants && prod.variants.length > 0) {
+          setSelectedVariantId(prod.variants[0].id);
+        }
+
+        // Fetch seller documents related to this product or category
+        const allDocs = await api.getSellerDocuments();
+        const relevant = allDocs.filter(
+          (d) => d.productId === prod.id || (d.category && d.category === prod.category)
+        );
+        setAttachedDocs(relevant);
+      } catch (err: any) {
+        showToast(`Failed to load product: ${err.message}`, 'error');
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadProduct();
+  }, [productId]);
+
+  if (loading) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 flex flex-col items-center justify-center min-h-[50vh]">
+        <div className="w-10 h-10 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
+        <p className="mt-4 text-slate-500 font-medium text-sm">Loading verified product details...</p>
+      </div>
+    );
+  }
+
+  if (!product) {
+    return (
+      <div className="max-w-7xl mx-auto px-4 py-16 text-center">
+        <h2 className="text-xl font-bold text-slate-900">Product Not Found</h2>
+        <p className="text-sm text-slate-500 mt-2">The requested product could not be located in our catalog.</p>
+        <button
+          onClick={onBack}
+          className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-xl text-sm font-semibold cursor-pointer"
+        >
+          Return to Storefront
+        </button>
+      </div>
+    );
+  }
+
+  const productUrl = `${window.location.origin}?product=${product.id}`;
+  const enquiryUrl = `${window.location.origin}?enquire=${product.id}`;
+
+  const handleCopyLink = () => {
+    navigator.clipboard.writeText(productUrl);
+    setCopiedLink(true);
+    showToast('Product link copied!', 'success');
+    setTimeout(() => setCopiedLink(false), 2000);
+  };
+
+  const handleCopyEnquiry = () => {
+    navigator.clipboard.writeText(enquiryUrl);
+    setCopiedEnquiry(true);
+    showToast('Product enquiry link copied!', 'success');
+    setTimeout(() => setCopiedEnquiry(false), 2000);
+  };
+
+  const handleBuyNow = () => {
+    addToCart(product, quantity, selectedVariantId);
+    setActiveTab('cart');
+  };
+
+  const selectedVariant = product.variants?.find((v) => v.id === selectedVariantId);
+  const currentPrice = selectedVariant ? selectedVariant.price : product.price;
+  const currentMrp = selectedVariant ? selectedVariant.mrp : product.mrp;
+
+  return (
+    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 animate-in fade-in">
+      {/* Back button & Breadcrumb */}
+      <div className="flex items-center justify-between mb-6">
+        <button
+          onClick={onBack}
+          className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600 hover:text-slate-900 transition-colors cursor-pointer"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Catalog</span>
+        </button>
+
+        {/* Share actions */}
+        <div className="flex items-center gap-2">
+          {product.instagramUrl && (
+            <a
+              href={product.instagramUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-pink-50 text-pink-700 hover:bg-pink-100 border border-pink-200"
+            >
+              <Instagram className="w-3.5 h-3.5" />
+              <span>Instagram Post</span>
+            </a>
+          )}
+          <button
+            onClick={handleCopyLink}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors cursor-pointer"
+          >
+            {copiedLink ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+            <span>Copy Link</span>
+          </button>
+          <button
+            onClick={handleCopyEnquiry}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-semibold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 transition-colors cursor-pointer"
+          >
+            {copiedEnquiry ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <MessageSquare className="w-3.5 h-3.5" />}
+            <span>Copy Enquiry Link</span>
+          </button>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12">
+        {/* Left: Product Images */}
+        <div className="lg:col-span-6 space-y-4">
+          <div className="aspect-square w-full bg-slate-100 rounded-3xl overflow-hidden border border-slate-200/90 shadow-xs relative">
+            <img
+              src={selectedImage || product.images[0]}
+              alt={product.name}
+              className="w-full h-full object-cover"
+            />
+            {product.discountPercent > 0 && (
+              <span className="absolute top-4 left-4 bg-rose-600 text-white font-extrabold text-xs px-3 py-1 rounded-full shadow-md">
+                {product.discountPercent}% OFF
+              </span>
+            )}
+            {product.deliveryConfig.supportsExpress30Min && (
+              <span className="absolute top-4 right-4 bg-emerald-600 text-white font-bold text-xs px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 border border-emerald-400/40">
+                <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
+                ⚡ 30-Min Express
+              </span>
+            )}
+          </div>
+
+          {/* Thumbnails */}
+          {product.images.length > 1 && (
+            <div className="flex items-center gap-3 overflow-x-auto pb-2">
+              {product.images.map((img, i) => (
+                <button
+                  key={i}
+                  onClick={() => setSelectedImage(img)}
+                  className={`w-20 h-20 rounded-xl overflow-hidden border-2 shrink-0 transition-all cursor-pointer ${
+                    selectedImage === img ? 'border-indigo-600 ring-2 ring-indigo-500/20' : 'border-slate-200 opacity-70 hover:opacity-100'
+                  }`}
+                >
+                  <img src={img} alt={`${product.name} thumb ${i}`} className="w-full h-full object-cover" />
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Official Verification Box */}
+          <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 text-xs space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="font-bold text-slate-900 flex items-center gap-1.5">
+                <ShieldCheck className="w-4 h-4 text-emerald-600" />
+                Manufacturer & Specification Verification
+              </span>
+              <span className="text-[11px] text-slate-500">
+                Verified: {product.lastVerifiedDate || '2026-03-01'}
+              </span>
+            </div>
+            <p className="text-slate-600 leading-relaxed">
+              Technical attributes, dosage formulations, and compatibility benchmarks for this product are sourced directly from verified manufacturer documentation.
+            </p>
+            {product.officialSourceUrl && (
+              <a
+                href={product.officialSourceUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-1 text-indigo-600 hover:text-indigo-800 font-semibold"
+              >
+                <span>View Official Manufacturer Record</span>
+                <ExternalLink className="w-3 h-3" />
+              </a>
+            )}
+          </div>
+        </div>
+
+        {/* Right: Product Purchase & Details */}
+        <div className="lg:col-span-6 flex flex-col justify-between space-y-6">
+          <div className="space-y-4">
+            <div>
+              <div className="flex items-center gap-2 text-xs font-bold uppercase tracking-wider text-indigo-600 mb-1">
+                <span>{product.brand}</span>
+                <span>•</span>
+                <span className="text-slate-500 capitalize">{product.category.replace('-', ' ')}</span>
+                <span>•</span>
+                <span className="text-slate-400 font-mono">SKU: {product.sku}</span>
+              </div>
+
+              <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 tracking-tight leading-tight">
+                {product.name}
+              </h1>
+
+              {product.kannadaName && (
+                <p className="text-base text-slate-600 font-['Noto_Sans_Kannada',sans-serif] mt-1 font-medium">
+                  {product.kannadaName}
+                </p>
+              )}
+            </div>
+
+            {/* Price Box */}
+            <div className="bg-slate-50/80 p-4 rounded-2xl border border-slate-200/80 flex items-baseline gap-3">
+              <span className="text-3xl font-extrabold text-slate-900">₹{currentPrice.toLocaleString('en-IN')}</span>
+              {currentMrp > currentPrice && (
+                <span className="text-base text-slate-400 line-through">₹{currentMrp.toLocaleString('en-IN')}</span>
+              )}
+              {product.discountPercent > 0 && (
+                <span className="bg-emerald-100 text-emerald-800 text-xs font-bold px-2 py-0.5 rounded-full">
+                  Save {product.discountPercent}%
+                </span>
+              )}
+              <span className="text-xs text-slate-500 ml-auto font-medium">Inclusive of all taxes</span>
+            </div>
+
+            {/* Stock & Delivery Alerts */}
+            <div className="space-y-2">
+              <div className="flex items-center justify-between text-xs p-3 bg-white border border-slate-200 rounded-xl">
+                <span className="text-slate-600 font-medium">Real-Time Inventory Status:</span>
+                {product.stock.available > 0 ? (
+                  <span className="font-bold text-emerald-600 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                    Available to sell: {product.stock.available} units (On-hand: {product.stock.onHand})
+                  </span>
+                ) : (
+                  <span className="font-bold text-rose-600">Currently Out of Stock</span>
+                )}
+              </div>
+
+              {product.deliveryConfig.supportsExpress30Min && (
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
+                  <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                  <div>
+                    <span className="font-bold">⚡ 30-Minute Hyper-Local Express Delivery Eligible!</span>
+                    <p className="text-emerald-700 mt-0.5">
+                      Dispatched instantly from local fulfillment hub for Bangalore pin codes (560001, 560038, 560103, 560068, 560034, 560008).
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Variants Selector */}
+            {product.variants && product.variants.length > 0 && (
+              <div className="space-y-2">
+                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide">
+                  Select Variant:
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {product.variants.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => setSelectedVariantId(v.id)}
+                      className={`px-3 py-2 rounded-xl text-xs font-semibold border transition-all cursor-pointer ${
+                        selectedVariantId === v.id
+                          ? 'border-indigo-600 bg-indigo-50 text-indigo-700 ring-2 ring-indigo-500/20'
+                          : 'border-slate-200 hover:border-slate-300 text-slate-700'
+                      }`}
+                    >
+                      <div>{v.name}</div>
+                      <div className="text-[11px] font-bold text-slate-900 mt-0.5">₹{v.price}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Description */}
+            <div className="space-y-1">
+              <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">Product Overview</h4>
+              <p className="text-sm text-slate-700 leading-relaxed">{product.description}</p>
+            </div>
+
+            {/* Specifications Table */}
+            {Object.keys(product.specifications).length > 0 && (
+              <div className="space-y-2">
+                <h4 className="text-xs font-bold uppercase tracking-wide text-slate-500">Key Specifications</h4>
+                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 text-xs">
+                  {Object.entries(product.specifications).map(([key, val]) => (
+                    <div key={key} className="grid grid-cols-3 p-2.5 bg-white">
+                      <span className="font-semibold text-slate-500">{key}</span>
+                      <span className="col-span-2 text-slate-900 font-medium">{val}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Seller PDF Knowledge Base & RAG Attachments */}
+            {attachedDocs.length > 0 && (
+              <div className="space-y-2 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold uppercase tracking-wide text-indigo-700 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5" />
+                    Seller Knowledge Base & PDF Manuals ({attachedDocs.length})
+                  </h4>
+                  <span className="text-[10px] text-slate-400">Indexed for Zyro AI</span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {attachedDocs.map((doc) => (
+                    <div
+                      key={doc.id}
+                      onClick={() => setSelectedDocPreview(doc)}
+                      className="p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/40 hover:bg-indigo-50 transition-colors flex items-center justify-between cursor-pointer"
+                    >
+                      <div className="truncate">
+                        <div className="text-xs font-bold text-slate-900 truncate">{doc.fileName}</div>
+                        <div className="text-[10px] text-slate-500">{Math.round(doc.fileSizeBytes / 1024)} KB • {doc.sections.length} Sections</div>
+                      </div>
+                      <span className="text-[10px] font-bold text-indigo-600 bg-white px-2 py-0.5 rounded shadow-2xs">View RAG</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Action Row & Quantity */}
+          <div className="space-y-3 pt-4 border-t border-slate-200">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center border border-slate-200 rounded-xl bg-white p-1">
+                <button
+                  disabled={quantity <= 1}
+                  onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                  className="w-8 h-8 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30 cursor-pointer"
+                >
+                  -
+                </button>
+                <span className="w-10 text-center font-bold text-sm text-slate-900">{quantity}</span>
+                <button
+                  disabled={quantity >= product.stock.available}
+                  onClick={() => setQuantity((q) => q + 1)}
+                  className="w-8 h-8 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-100 rounded-lg disabled:opacity-30 cursor-pointer"
+                >
+                  +
+                </button>
+              </div>
+
+              <button
+                disabled={product.stock.available <= 0}
+                onClick={() => addToCart(product, quantity, selectedVariantId)}
+                className="flex-1 py-3 px-4 bg-slate-900 hover:bg-slate-800 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <ShoppingBag className="w-4 h-4" />
+                <span>Add {quantity} to Cart</span>
+              </button>
+
+              <button
+                disabled={product.stock.available <= 0}
+                onClick={handleBuyNow}
+                className="py-3 px-5 bg-indigo-600 hover:bg-indigo-500 disabled:bg-slate-300 text-white font-bold text-sm rounded-xl transition-all shadow-md cursor-pointer"
+              >
+                Buy Now
+              </button>
+            </div>
+
+            {/* Talk to Zyro AI & Enquire Options */}
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                onClick={() => startCallingZyro(product)}
+                className="py-2.5 px-3 bg-gradient-to-r from-indigo-50 to-violet-50 hover:from-indigo-100 hover:to-violet-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>Talk to Zyro AI (English & ಕನ್ನಡ)</span>
+              </button>
+
+              <button
+                onClick={() => openEnquiryModal(product.id)}
+                className="py-2.5 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-bold flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <MessageSquare className="w-4 h-4 text-slate-600" />
+                <span>Ask Seller a Question</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* RAG Knowledge Document Preview Modal */}
+      {selectedDocPreview && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[85vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <FileText className="w-5 h-5 text-indigo-600" />
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">{selectedDocPreview.fileName}</h3>
+                  <span className="text-[11px] text-slate-400">Indexed for Zyro AI Evidence Retrieval</span>
+                </div>
+              </div>
+              <button
+                onClick={() => setSelectedDocPreview(null)}
+                className="text-slate-400 hover:text-slate-600 font-bold text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 text-xs leading-relaxed text-slate-700 pr-2">
+              <div className="bg-indigo-50/60 p-3 rounded-xl border border-indigo-100">
+                <span className="font-bold text-indigo-900 block mb-1">Full Extracted Content:</span>
+                <p className="whitespace-pre-wrap">{selectedDocPreview.extractedText}</p>
+              </div>
+
+              {selectedDocPreview.sections.map((sec, idx) => (
+                <div key={idx} className="p-3 border border-slate-200 rounded-xl bg-slate-50">
+                  <h5 className="font-bold text-slate-900 mb-1">{sec.title}</h5>
+                  <p className="text-slate-600">{sec.content}</p>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => setSelectedDocPreview(null)}
+                className="px-4 py-2 bg-slate-900 text-white font-semibold text-xs rounded-xl cursor-pointer"
+              >
+                Close Preview
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};

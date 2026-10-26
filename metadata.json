@@ -1,0 +1,6 @@
+{
+  "name": "TrendVibe Store & Zyro AI",
+  "description": "Multi-vendor e-commerce platform with Zyro AI shopping assistant, bilingual voice calling in English & Kannada, real-time inventory management, delivery tracking, and seller finance analytics.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
