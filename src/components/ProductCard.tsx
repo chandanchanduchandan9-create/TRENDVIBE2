@@ -184,12 +184,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
             {product.name}
           </h3>
 
-          {product.kannadaName && (
-            <p className="text-xs text-slate-500 font-['Noto_Sans_Kannada',sans-serif] mt-0.5 line-clamp-1">
-              {product.kannadaName}
-            </p>
-          )}
-
           <p className="text-xs text-slate-600 mt-1.5 line-clamp-2 leading-relaxed">
             {product.shortDescription || product.description}
           </p>

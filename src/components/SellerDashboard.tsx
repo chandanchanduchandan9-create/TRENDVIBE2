@@ -10,6 +10,7 @@ import {
   OrderStatus,
 } from '../types/index.ts';
 import { api } from '../services/api.ts';
+import { parsePdfFile } from '../services/pdfParser.ts';
 import {
   Layers,
   Package,
@@ -33,6 +34,11 @@ import {
   Zap,
   Database,
   Cloud,
+  FileCheck,
+  X,
+  Upload,
+  Image as ImageIcon,
+  MapPin,
 } from 'lucide-react';
 
 export const SellerDashboard: React.FC = () => {
@@ -57,17 +63,26 @@ export const SellerDashboard: React.FC = () => {
   const [restockQty, setRestockQty] = useState(25);
   const [restockNote, setRestockNote] = useState('Stock replenishment from warehouse');
 
-  // PDF Document Upload State
+  // PDF Document Upload State (Knowledge Base)
   const [isUploadDocOpen, setIsUploadDocOpen] = useState(false);
   const [docFileName, setDocFileName] = useState('');
   const [docText, setDocText] = useState('');
   const [docCategory, setDocCategory] = useState('medicines-healthcare');
   const [docProductId, setDocProductId] = useState('');
+  const [docPdfUploading, setDocPdfUploading] = useState(false);
+  const [docPdfSuccess, setDocPdfSuccess] = useState<string | null>(null);
 
-  // New Product Form State
+  // PDF Attachment State for Add/Edit Product Form
+  const [productPdfUploading, setProductPdfUploading] = useState(false);
+  const [productPdfSuccess, setProductPdfSuccess] = useState<string | null>(null);
+
+  // Photo Upload State for Add/Edit Product Form
+  const [imageUploading, setImageUploading] = useState(false);
+  const [newImageUrlInput, setNewImageUrlInput] = useState('');
+
+  // New Product Form State (without Kannada name)
   const initialProductForm: Partial<Product> = {
     name: '',
-    kannadaName: '',
     brand: user?.storeName || 'TrendVibe',
     category: 'medicines-healthcare',
     subcategory: 'Fever & Cold',
@@ -81,15 +96,146 @@ export const SellerDashboard: React.FC = () => {
     stock: { onHand: 50, reserved: 0, available: 50, lowStockThreshold: 10 },
     instagramUrl: '',
     officialSourceUrl: '',
+    pdfDocName: '',
+    pdfDocUrl: '',
+    pdfExtractedText: '',
     status: 'published',
+    deliveryConfig: {
+      supportsExpress30Min: true,
+      preparationMinutes: 15,
+      standardDeliveryDays: 2,
+      shippingFee: 25,
+      freeShippingAbove: 499,
+      returnPolicyDays: 7,
+      serviceablePincodes: ['560001', '560038', '560103', '560068', '560034'],
+      locationBasedSellingEnabled: true,
+      serviceCity: 'Bangalore',
+      deliverySpeed: 'all',
+      quickDeliveryCharge: 40,
+    },
   };
   const [productForm, setProductForm] = useState<Partial<Product>>(initialProductForm);
+
+  // Handle Photo File Upload (JPG, PNG, WebP)
+  const handleImageFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    setImageUploading(true);
+    let successCount = 0;
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const validTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/jpg'];
+        const ext = file.name.split('.').pop()?.toLowerCase();
+        if (!validTypes.includes(file.type) && !['jpg', 'jpeg', 'png', 'webp'].includes(ext || '')) {
+          showToast(`"${file.name}" skipped: only JPG, PNG, and WebP are supported.`, 'error');
+          continue;
+        }
+
+        if (file.size > 5 * 1024 * 1024) {
+          showToast(`"${file.name}" is larger than 5MB limit.`, 'error');
+          continue;
+        }
+
+        const reader = new FileReader();
+        const base64Data: string = await new Promise((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(file);
+        });
+
+        const res = await api.uploadProductImage(file.name, base64Data);
+        if (res?.imageUrl) {
+          setProductForm((prev) => ({
+            ...prev,
+            images: [
+              ...(prev.images || []).filter(
+                (img) =>
+                  !img.includes('photo-1584308666744-24d5c474f2ae') &&
+                  !img.includes('photo-1523275335684-37898b6baf30')
+              ),
+              res.imageUrl,
+            ],
+          }));
+          successCount++;
+        }
+      }
+
+      if (successCount > 0) {
+        showToast(`Uploaded ${successCount} product photo${successCount > 1 ? 's' : ''}!`, 'success');
+      }
+    } catch (err: any) {
+      showToast(`Image upload note: ${err.message}`, 'error');
+    } finally {
+      setImageUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  // Handle PDF file selection for Product Add/Edit Form
+  const handleProductPdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      showToast('Please select a valid PDF file (.pdf format)', 'error');
+      return;
+    }
+
+    setProductPdfUploading(true);
+    try {
+      const parsed = await parsePdfFile(file);
+      setProductForm((prev) => ({
+        ...prev,
+        pdfDocName: parsed.fileName,
+        pdfDocUrl: parsed.dataUrl,
+        pdfExtractedText: parsed.extractedText,
+        // Pre-populate description if empty
+        description: prev.description?.trim()
+          ? prev.description
+          : `Verified product specifications from ${parsed.fileName}.\n${parsed.extractedText.slice(0, 300)}...`,
+      }));
+      setProductPdfSuccess(`Attached: ${parsed.fileName} (${(parsed.fileSizeBytes / 1024).toFixed(1)} KB) - Text extracted for Zyro AI`);
+      showToast(`PDF accepted! Extracted ${parsed.extractedText.length} characters of text for Zyro AI.`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to read PDF file', 'error');
+    } finally {
+      setProductPdfUploading(false);
+    }
+  };
+
+  // Handle PDF file selection for Knowledge Base Modal
+  const handleKnowledgeDocPdfFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.toLowerCase().endsWith('.pdf') && file.type !== 'application/pdf') {
+      showToast('Please select a valid PDF file (.pdf format)', 'error');
+      return;
+    }
+
+    setDocPdfUploading(true);
+    try {
+      const parsed = await parsePdfFile(file);
+      setDocFileName(parsed.fileName);
+      setDocText(parsed.extractedText);
+      setDocPdfSuccess(`Loaded: ${parsed.fileName} (${(parsed.fileSizeBytes / 1024).toFixed(1)} KB)`);
+      showToast(`PDF accepted! Extracted ${parsed.extractedText.length} characters of knowledge.`, 'success');
+    } catch (err: any) {
+      showToast(err.message || 'Failed to parse PDF', 'error');
+    } finally {
+      setDocPdfUploading(false);
+    }
+  };
 
   const loadAllData = async () => {
     setLoading(true);
     try {
+      // Fetch products: if seller is active, get seller's products (or all products if customer/admin view)
+      const sellerFilter = (user?.role === 'seller' && user?.id !== 'usr-customer-1') ? user.id : undefined;
       const [prodsRes, ordsRes, movsRes, docsRes, anaRes, finRes, supaRes] = await Promise.all([
-        api.getProducts({ sellerId: user?.id }),
+        api.getProducts({ sellerId: sellerFilter }),
         api.getOrders(),
         api.getInventoryMovements(),
         api.getSellerDocuments(),
@@ -131,18 +277,64 @@ export const SellerDashboard: React.FC = () => {
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!productForm.name?.trim()) {
+      showToast('Please enter a product title', 'error');
+      return;
+    }
+
     try {
+      const finalForm: Partial<Product> = {
+        ...productForm,
+        name: productForm.name.trim(),
+        status: 'published',
+        brand: productForm.brand || user?.storeName || 'TrendVibe',
+        category: productForm.category || 'other-store-products',
+        mrp: Number(productForm.mrp || 100),
+        price: Number(productForm.price || 85),
+        costPrice: Number(productForm.costPrice || 50),
+        sku: productForm.sku || `SKU-${Date.now().toString().slice(-6)}`,
+        images: productForm.images && productForm.images.length > 0
+          ? productForm.images
+          : ['https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80'],
+        stock: {
+          onHand: Number(productForm.stock?.onHand ?? 50),
+          reserved: 0,
+          available: Number(productForm.stock?.onHand ?? 50),
+          lowStockThreshold: 10,
+        },
+        pdfDocName: productForm.pdfDocName || '',
+        pdfDocUrl: productForm.pdfDocUrl || '',
+        pdfExtractedText: productForm.pdfExtractedText || '',
+        isVerifiedInfo: true,
+        deliveryConfig: productForm.deliveryConfig || {
+          supportsExpress30Min: true,
+          preparationMinutes: 15,
+          standardDeliveryDays: 2,
+          shippingFee: 25,
+          freeShippingAbove: 499,
+          returnPolicyDays: 7,
+          serviceablePincodes: ['560001', '560038', '560103', '560068', '560034'],
+          locationBasedSellingEnabled: true,
+          serviceCity: 'Bangalore',
+          deliverySpeed: 'all',
+          quickDeliveryCharge: 40,
+        },
+      };
+
       if (editingProduct) {
-        await api.updateProduct(editingProduct.id, productForm);
-        showToast('Product updated successfully!', 'success');
+        await api.updateProduct(editingProduct.id, finalForm);
+        showToast(`"${finalForm.name}" updated and live on storefront!`, 'success');
       } else {
-        await api.createProduct(productForm);
-        showToast('New product published to storefront!', 'success');
+        const created = await api.createProduct(finalForm);
+        showToast(`"${created.name}" published! It is now immediately listed in the website storefront.`, 'success');
       }
+
       setIsAddProductOpen(false);
       setEditingProduct(null);
       setProductForm(initialProductForm);
-      loadAllData();
+      setProductPdfSuccess(null);
+      await loadAllData();
+      setActiveSubTab('products');
     } catch (err: any) {
       showToast(`Product save failed: ${err.message}`, 'error');
     }
@@ -256,41 +448,6 @@ export const SellerDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Supabase Cloud Database Connection Banner */}
-      <div className="bg-white rounded-3xl border border-emerald-200/90 p-5 mb-6 shadow-xs flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-3.5">
-          <div className="w-11 h-11 rounded-2xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0 border border-emerald-100">
-            <Database className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-slate-900 text-sm">Supabase Cloud Database</span>
-              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Connected
-              </span>
-            </div>
-            <p className="text-xs text-slate-500 font-mono mt-0.5">
-              Project ID: <span className="text-slate-900 font-bold">{supabaseStatus?.projectId || 'ovdgiwothbuxthjczrkp'}</span> • {supabaseStatus?.url || 'https://ovdgiwothbuxthjczrkp.supabase.co'}
-            </p>
-            {supabaseStatus?.lastSync && (
-              <p className="text-[10px] text-emerald-600 font-medium mt-0.5">
-                Last synchronized: {new Date(supabaseStatus.lastSync).toLocaleTimeString()}
-              </p>
-            )}
-          </div>
-        </div>
-
-        <button
-          disabled={syncingSupabase}
-          onClick={handleSyncSupabase}
-          className="px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer shrink-0"
-        >
-          <RefreshCw className={`w-3.5 h-3.5 ${syncingSupabase ? 'animate-spin' : ''}`} />
-          <span>{syncingSupabase ? 'Syncing Tables...' : 'Sync Catalogue & Orders to Supabase'}</span>
-        </button>
-      </div>
-
       {/* Seller Navigation Tabs */}
       <div className="flex items-center gap-2 overflow-x-auto pb-4 mb-6 border-b border-slate-200 text-xs font-bold">
         <button
@@ -382,7 +539,7 @@ export const SellerDashboard: React.FC = () => {
                   {products.map((p) => {
                     const isLowStock = p.stock.available <= p.stock.lowStockThreshold;
                     const prodUrl = `${window.location.origin}?product=${p.id}`;
-                    const enqUrl = `${window.location.origin}?enquire=${p.id}`;
+                    const enqUrl = `${window.location.origin}?enquire=${encodeURIComponent(p.id)}&sellerId=${encodeURIComponent(p.sellerId || '')}`;
 
                     return (
                       <tr key={p.id} className="hover:bg-slate-50/80 transition-colors">
@@ -923,17 +1080,6 @@ export const SellerDashboard: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Kannada Name (ಕನ್ನಡ ಹೆಸರು)</label>
-                  <input
-                    type="text"
-                    value={productForm.kannadaName || ''}
-                    onChange={(e) => setProductForm({ ...productForm, kannadaName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-medium"
-                    placeholder="e.g., ಡೋಲೋ 650 ಮಾತ್ರೆ"
-                  />
-                </div>
-
-                <div>
                   <label className="block font-semibold text-slate-700 mb-1">Brand Name</label>
                   <input
                     type="text"
@@ -971,6 +1117,22 @@ export const SellerDashboard: React.FC = () => {
                 </div>
 
                 <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Initial On-Hand Stock</label>
+                  <input
+                    type="number"
+                    min="0"
+                    value={productForm.stock?.onHand}
+                    onChange={(e) =>
+                      setProductForm({
+                        ...productForm,
+                        stock: { ...productForm.stock!, onHand: Number(e.target.value) },
+                      })
+                    }
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
+                  />
+                </div>
+
+                <div>
                   <label className="block font-semibold text-slate-700 mb-1">Maximum Retail Price (MRP ₹)</label>
                   <input
                     type="number"
@@ -994,7 +1156,7 @@ export const SellerDashboard: React.FC = () => {
                   />
                 </div>
 
-                <div>
+                <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-700 mb-1">Cost Price (COGS ₹ for Profit computation)</label>
                   <input
                     type="number"
@@ -1005,20 +1167,122 @@ export const SellerDashboard: React.FC = () => {
                   />
                 </div>
 
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Initial On-Hand Stock</label>
+                {/* Product Photo Upload Section */}
+                <div className="sm:col-span-2 bg-slate-50 border border-slate-200 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                        <ImageIcon className="w-4 h-4 text-indigo-600" />
+                        Product Photos (Upload from Device or paste Image URL)
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Upload product photos (JPG, PNG, WebP up to 5MB). Set the primary photo or remove photos.
+                      </p>
+                    </div>
+                    <span className="text-[11px] font-bold text-indigo-600">
+                      {(productForm.images || []).length} photo{(productForm.images || []).length === 1 ? '' : 's'} attached
+                    </span>
+                  </div>
+
                   <input
-                    type="number"
-                    min="0"
-                    value={productForm.stock?.onHand}
-                    onChange={(e) =>
-                      setProductForm({
-                        ...productForm,
-                        stock: { ...productForm.stock!, onHand: Number(e.target.value) },
-                      })
-                    }
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold"
+                    type="file"
+                    id="product-photo-upload-input"
+                    accept="image/jpeg,image/png,image/webp,image/jpg"
+                    multiple
+                    className="hidden"
+                    onChange={handleImageFilesUpload}
                   />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <label
+                      htmlFor="product-photo-upload-input"
+                      className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white rounded-xl p-3 flex items-center justify-center gap-2 cursor-pointer transition-all hover:bg-indigo-50/20 text-center"
+                    >
+                      <UploadCloud className="w-4 h-4 text-indigo-600" />
+                      <span className="font-bold text-xs text-indigo-900">
+                        {imageUploading ? 'Uploading Photos...' : 'Upload Photos from Computer/Phone'}
+                      </span>
+                    </label>
+
+                    <div className="flex gap-1.5">
+                      <input
+                        type="url"
+                        placeholder="Or paste image URL..."
+                        value={newImageUrlInput}
+                        onChange={(e) => setNewImageUrlInput(e.target.value)}
+                        className="flex-1 bg-white border border-slate-200 rounded-xl px-3 py-1.5 text-xs text-slate-800"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (newImageUrlInput.trim()) {
+                            setProductForm((prev) => ({
+                              ...prev,
+                              images: [
+                                ...(prev.images || []).filter(
+                                  (img) =>
+                                    !img.includes('photo-1584308666744-24d5c474f2ae') &&
+                                    !img.includes('photo-1523275335684-37898b6baf30')
+                                ),
+                                newImageUrlInput.trim(),
+                              ],
+                            }));
+                            setNewImageUrlInput('');
+                          }
+                        }}
+                        className="px-3 py-1.5 bg-slate-800 hover:bg-slate-900 text-white font-bold rounded-xl text-xs cursor-pointer"
+                      >
+                        Add URL
+                      </button>
+                    </div>
+                  </div>
+
+                  {(productForm.images || []).length > 0 && (
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-1">
+                      {(productForm.images || []).map((imgUrl, idx) => (
+                        <div key={idx} className="relative group rounded-xl overflow-hidden border border-slate-200 bg-white aspect-square shadow-xs">
+                          <img
+                            src={imgUrl}
+                            alt={`Product thumbnail ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80';
+                            }}
+                          />
+                          {idx === 0 ? (
+                            <span className="absolute top-1.5 left-1.5 bg-emerald-600 text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded-md shadow-xs">
+                              Primary Photo
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                const copy = [...(productForm.images || [])];
+                                const [target] = copy.splice(idx, 1);
+                                copy.unshift(target);
+                                setProductForm({ ...productForm, images: copy });
+                              }}
+                              className="absolute top-1.5 left-1.5 bg-black/60 hover:bg-black/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
+                            >
+                              Set Primary
+                            </button>
+                          )}
+
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = (productForm.images || []).filter((_, i) => i !== idx);
+                              setProductForm({ ...productForm, images: updated });
+                            }}
+                            className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-rose-600 text-white flex items-center justify-center opacity-80 hover:opacity-100 transition-opacity shadow-xs cursor-pointer font-bold text-xs"
+                            title="Delete this photo"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
 
                 <div className="sm:col-span-2">
@@ -1041,6 +1305,290 @@ export const SellerDashboard: React.FC = () => {
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-medium"
                     placeholder="Describe key ingredients, specifications, and warranty..."
                   />
+                </div>
+
+                {/* PDF Document Attachment Section */}
+                <div className="sm:col-span-2 bg-indigo-50/50 border border-indigo-100 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <span className="font-bold text-slate-900 text-xs flex items-center gap-1.5">
+                        <FileText className="w-4 h-4 text-indigo-600" />
+                        Attach Product PDF Specification / Lab Certificate (Optional)
+                      </span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Upload a PDF manual, composition sheet, or dosage monograph. Zyro AI will read this to answer shopper questions.
+                      </p>
+                    </div>
+                    {productForm.pdfDocName && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setProductForm({
+                            ...productForm,
+                            pdfDocName: '',
+                            pdfDocUrl: '',
+                            pdfExtractedText: '',
+                          });
+                          setProductPdfSuccess(null);
+                        }}
+                        className="text-[11px] text-rose-600 hover:text-rose-800 font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                        Remove PDF
+                      </button>
+                    )}
+                  </div>
+
+                  {/* Hidden File Input */}
+                  <input
+                    type="file"
+                    id="product-pdf-upload-input"
+                    accept=".pdf,application/pdf"
+                    className="hidden"
+                    onChange={handleProductPdfFileChange}
+                  />
+
+                  {/* Drag & Drop / Click Zone */}
+                  {!productForm.pdfDocName ? (
+                    <label
+                      htmlFor="product-pdf-upload-input"
+                      className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-white rounded-xl p-4 flex flex-col items-center justify-center gap-2 cursor-pointer transition-all hover:bg-indigo-50/30 text-center"
+                    >
+                      <div className="w-9 h-9 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center">
+                        <UploadCloud className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-xs text-indigo-900 block">
+                          {productPdfUploading ? 'Extracting PDF Text...' : 'Click to select or drop a PDF document (.pdf)'}
+                        </span>
+                        <span className="text-[10px] text-slate-400">
+                          Supports medicine monographs, test certificates, product guides, and manuals
+                        </span>
+                      </div>
+                    </label>
+                  ) : (
+                    <div className="bg-white rounded-xl p-3 border border-emerald-200 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                          <span className="font-bold text-xs text-slate-900">{productForm.pdfDocName}</span>
+                        </div>
+                        <span className="text-[10px] font-bold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                          ✓ PDF Accepted & Text Extracted
+                        </span>
+                      </div>
+
+                      {productPdfSuccess && (
+                        <div className="text-[11px] text-emerald-700 font-medium">
+                          {productPdfSuccess}
+                        </div>
+                      )}
+
+                      {productForm.pdfExtractedText && (
+                        <div>
+                          <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
+                            Extracted Knowledge Content (Editable for Zyro AI):
+                          </label>
+                          <textarea
+                            rows={3}
+                            value={productForm.pdfExtractedText}
+                            onChange={(e) => setProductForm({ ...productForm, pdfExtractedText: e.target.value })}
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-[11px] text-slate-800 font-mono"
+                          />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Location-Based Selling & Hyperlocal Quick Delivery Section */}
+                <div className="sm:col-span-2 bg-amber-50/50 border border-amber-200/80 rounded-2xl p-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <MapPin className="w-4 h-4 text-amber-600" />
+                      <div>
+                        <span className="font-bold text-slate-900 text-xs">
+                          Location-Based Selling & Hyperlocal Delivery Options
+                        </span>
+                        <p className="text-[11px] text-slate-500">
+                          Configure geographic delivery radius, city hub, and PIN codes for 30-minute quick delivery.
+                        </p>
+                      </div>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={productForm.deliveryConfig?.locationBasedSellingEnabled ?? true}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            deliveryConfig: {
+                              ...(productForm.deliveryConfig || {
+                                supportsExpress30Min: true,
+                                preparationMinutes: 15,
+                                standardDeliveryDays: 2,
+                                shippingFee: 25,
+                                freeShippingAbove: 499,
+                                returnPolicyDays: 7,
+                                serviceablePincodes: ['560001', '560038', '560103', '560068', '560034'],
+                              }),
+                              locationBasedSellingEnabled: e.target.checked,
+                            },
+                          })
+                        }
+                        className="sr-only peer"
+                      />
+                      <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
+                    </label>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Service City / Region</label>
+                      <input
+                        type="text"
+                        value={productForm.deliveryConfig?.serviceCity || 'Bangalore'}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            deliveryConfig: {
+                              ...(productForm.deliveryConfig || {
+                                supportsExpress30Min: true,
+                                preparationMinutes: 15,
+                                standardDeliveryDays: 2,
+                                shippingFee: 25,
+                                freeShippingAbove: 499,
+                                returnPolicyDays: 7,
+                                serviceablePincodes: [],
+                              }),
+                              serviceCity: e.target.value,
+                            },
+                          })
+                        }
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-medium"
+                        placeholder="e.g. Bangalore"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Delivery Speed Tier</label>
+                      <select
+                        value={productForm.deliveryConfig?.deliverySpeed || 'all'}
+                        onChange={(e) => {
+                          const val = e.target.value as any;
+                          setProductForm({
+                            ...productForm,
+                            deliveryConfig: {
+                              ...(productForm.deliveryConfig || {
+                                preparationMinutes: 15,
+                                standardDeliveryDays: 2,
+                                shippingFee: 25,
+                                freeShippingAbove: 499,
+                                returnPolicyDays: 7,
+                                serviceablePincodes: [],
+                              }),
+                              deliverySpeed: val,
+                              supportsExpress30Min: val === 'quick_30min' || val === 'all',
+                            },
+                          });
+                        }}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-medium cursor-pointer"
+                      >
+                        <option value="all">⚡ 30-Minute Quick Delivery + Standard (All)</option>
+                        <option value="quick_30min">⚡ 30-Minute Hyperlocal Only</option>
+                        <option value="express_sameday">🚀 Same-Day Express</option>
+                        <option value="standard">📦 Standard Delivery (1-3 Days)</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Standard Delivery Fee (₹)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={productForm.deliveryConfig?.shippingFee ?? 25}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            deliveryConfig: {
+                              ...(productForm.deliveryConfig || {
+                                supportsExpress30Min: true,
+                                preparationMinutes: 15,
+                                standardDeliveryDays: 2,
+                                freeShippingAbove: 499,
+                                returnPolicyDays: 7,
+                                serviceablePincodes: [],
+                              }),
+                              shippingFee: Number(e.target.value),
+                            },
+                          })
+                        }
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-medium"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2">
+                      <label className="block font-semibold text-slate-700 mb-1">
+                        Serviceable PIN Codes (Comma Separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={(productForm.deliveryConfig?.serviceablePincodes || []).join(', ')}
+                        onChange={(e) => {
+                          const pins = e.target.value
+                            .split(',')
+                            .map((p) => p.trim())
+                            .filter(Boolean);
+                          setProductForm({
+                            ...productForm,
+                            deliveryConfig: {
+                              ...(productForm.deliveryConfig || {
+                                supportsExpress30Min: true,
+                                preparationMinutes: 15,
+                                standardDeliveryDays: 2,
+                                shippingFee: 25,
+                                freeShippingAbove: 499,
+                                returnPolicyDays: 7,
+                              }),
+                              serviceablePincodes: pins,
+                            },
+                          });
+                        }}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-mono text-xs"
+                        placeholder="e.g. 560001, 560038, 560103, 560068, 560034"
+                      />
+                      <span className="text-[10px] text-slate-400 mt-1 block">
+                        Enter '*' to allow nationwide delivery or specific postal PIN codes for rapid hyperlocal dispatch.
+                      </span>
+                    </div>
+
+                    <div>
+                      <label className="block font-semibold text-slate-700 mb-1">Quick 30-Min Surcharge (₹)</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={productForm.deliveryConfig?.quickDeliveryCharge ?? 40}
+                        onChange={(e) =>
+                          setProductForm({
+                            ...productForm,
+                            deliveryConfig: {
+                              ...(productForm.deliveryConfig || {
+                                supportsExpress30Min: true,
+                                preparationMinutes: 15,
+                                standardDeliveryDays: 2,
+                                shippingFee: 25,
+                                freeShippingAbove: 499,
+                                returnPolicyDays: 7,
+                                serviceablePincodes: [],
+                              }),
+                              quickDeliveryCharge: Number(e.target.value),
+                            },
+                          })
+                        }
+                        className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-medium"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1140,6 +1688,33 @@ export const SellerDashboard: React.FC = () => {
             </p>
 
             <form onSubmit={handleUploadDocument} className="space-y-3 text-xs">
+              {/* PDF File Picker Dropzone */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Select PDF File (.pdf)</label>
+                <input
+                  type="file"
+                  id="knowledge-pdf-upload-input"
+                  accept=".pdf,application/pdf"
+                  className="hidden"
+                  onChange={handleKnowledgeDocPdfFileChange}
+                />
+                <label
+                  htmlFor="knowledge-pdf-upload-input"
+                  className="border-2 border-dashed border-indigo-200 hover:border-indigo-400 bg-slate-50 hover:bg-indigo-50/30 rounded-xl p-3 flex items-center justify-center gap-2 cursor-pointer transition-colors"
+                >
+                  <UploadCloud className="w-4 h-4 text-indigo-600" />
+                  <span className="font-bold text-xs text-indigo-900">
+                    {docPdfUploading ? 'Extracting PDF...' : 'Choose or drop PDF document (.pdf)'}
+                  </span>
+                </label>
+                {docPdfSuccess && (
+                  <p className="mt-1 text-[11px] text-emerald-600 font-semibold flex items-center gap-1">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                    {docPdfSuccess}
+                  </p>
+                )}
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Document File Name</label>
                 <input

@@ -13,6 +13,8 @@ import {
   User as UserIcon,
   ShoppingBag,
   Zap,
+  Mic,
+  MicOff,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
 
@@ -24,18 +26,18 @@ interface ChatMessage {
   citations?: string[];
   orderProposal?: any;
   productContext?: any;
+  cartAction?: any;
   timestamp: string;
 }
 
 export const AIShoppingView: React.FC = () => {
-  const { user, startCallingZyro, showToast, setActiveTab, openProduct } = useApp();
+  const { user, startCallingZyro, showToast, setActiveTab, openProduct, addToCart } = useApp();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
       sender: 'zyro_ai',
-      text: "Namaskara! I am Zyro AI, your bilingual intelligent shopping assistant at TrendVibe Store. I can help you verify certified medicines (like Dolo 650 & Electral), explore high-protein foods, compare laptops, check 30-minute hyper-local delivery in Bangalore, or even place an order directly via conversational voice/chat in English or ಕನ್ನಡ (Kannada). How can I assist you today?",
-      kannadaText: "ನಮಸ್ಕಾರ! ನಾನು ಟ್ರೆಂಡ್‌ವೈಬ್ ಸ್ಟೋರ್‌ನ ಜೈರೋ AI ಶಾಪಿಂಗ್ ಅಸಿಸ್ಟೆಂಟ್. ಔಷಧಿಗಳು, ಲ್ಯಾಪ್‌ಟಾಪ್‌ಗಳು, ಆಹಾರ ಪದಾರ್ಥಗಳು ಮತ್ತು 30 ನಿಮಿಷಗಳ ಎಕ್ಸ್‌ಪ್ರೆಸ್ ಡೆಲಿವರಿ ಬಗ್ಗೆ ನಿಮಗೆ ಕನ್ನಡದಲ್ಲಿ ಸಹಾಯ ಮಾಡಲು ನಾನು ಸಿದ್ಧನಿದ್ದೇನೆ.",
+      text: "Hello! I am Zyro AI, your intelligent shopping assistant at TrendVibe Store. I can help you verify certified medicines (like Dolo 650 & Electral), explore high-protein foods, compare laptops, check 30-minute hyper-local delivery in Bangalore, or even place an order directly via conversational voice/chat. How can I assist you today?",
       citations: ['TrendVibe Store Catalogue & Verified Seller Knowledge Base'],
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
@@ -44,7 +46,90 @@ export const AIShoppingView: React.FC = () => {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState<'auto' | 'en' | 'kn'>('auto');
+  const [isListening, setIsListening] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
+
+  const toggleSpeechRecognition = () => {
+    if (typeof window === 'undefined') return;
+
+    if (isListening) {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // ignore
+        }
+      }
+      setIsListening(false);
+      return;
+    }
+
+    const SpeechRecognition =
+      (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+      showToast('Speech recognition not supported in your browser, launching voice call instead.', 'info');
+      startCallingZyro();
+      return;
+    }
+
+    try {
+      const recognition = new SpeechRecognition();
+      recognition.continuous = false;
+      recognition.interimResults = true;
+      recognition.lang = selectedLanguage === 'kn' ? 'kn-IN' : 'en-IN';
+
+      recognition.onstart = () => {
+        setIsListening(true);
+        showToast('Microphone listening... Speak your question now', 'info');
+      };
+
+      recognition.onresult = (event: any) => {
+        let transcript = '';
+        for (let i = 0; i < event.results.length; i++) {
+          transcript += event.results[i][0].transcript;
+        }
+        setInput(transcript);
+        if (event.results[0]?.isFinal) {
+          setIsListening(false);
+        }
+      };
+
+      recognition.onerror = (err: any) => {
+        console.warn('Speech recognition error in chat:', err);
+        setIsListening(false);
+        if (err.error === 'not-allowed') {
+          showToast('Microphone permission blocked. Please allow mic access in your browser.', 'error');
+        } else if (err.error === 'network') {
+          showToast('Voice cloud recognition unavailable in iframe. Opening Voice Hub...', 'info');
+          startCallingZyro();
+        }
+      };
+
+      recognition.onend = () => {
+        setIsListening(false);
+      };
+
+      recognitionRef.current = recognition;
+      recognition.start();
+    } catch (e: any) {
+      console.warn('Could not start recognition:', e);
+      setIsListening(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        try {
+          recognitionRef.current.stop();
+        } catch (e) {
+          // ignore
+        }
+      }
+    };
+  }, []);
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -71,6 +156,12 @@ export const AIShoppingView: React.FC = () => {
         language: selectedLanguage,
       });
 
+      if (res.cartAction?.product) {
+        addToCart(res.cartAction.product, res.cartAction.quantity || 1);
+        confetti({ particleCount: 65, spread: 60, origin: { y: 0.8 } });
+        showToast(`🛒 Added ${res.cartAction.productName} (${res.cartAction.quantity}x) to your cart!`, 'success');
+      }
+
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
         sender: 'zyro_ai',
@@ -79,6 +170,7 @@ export const AIShoppingView: React.FC = () => {
         citations: res.citations,
         orderProposal: res.orderProposal,
         productContext: res.productContext,
+        cartAction: res.cartAction,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
 
@@ -307,6 +399,49 @@ export const AIShoppingView: React.FC = () => {
                         </button>
                       </div>
                     )}
+
+                    {/* Interactive Cart Action Card */}
+                    {m.cartAction && m.cartAction.product && (
+                      <div className="mt-3 p-3.5 bg-emerald-950 text-white rounded-2xl border border-emerald-500/40 space-y-2.5 text-xs text-left shadow-lg">
+                        <div className="flex items-center justify-between border-b border-emerald-800 pb-2">
+                          <span className="font-extrabold text-emerald-300 flex items-center gap-1.5">
+                            <ShoppingBag className="w-4 h-4 text-emerald-400" />
+                            Added to Shopping Cart
+                          </span>
+                          <span className="bg-emerald-500/20 text-emerald-300 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-500/30">
+                            {m.cartAction.quantity} Item{m.cartAction.quantity > 1 ? 's' : ''}
+                          </span>
+                        </div>
+
+                        <div className="flex items-center gap-3">
+                          {m.cartAction.product.images?.[0] && (
+                            <img
+                              src={m.cartAction.product.images[0]}
+                              alt={m.cartAction.productName}
+                              className="w-12 h-12 object-cover rounded-xl border border-emerald-700/50"
+                            />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <div className="font-bold text-white line-clamp-1">{m.cartAction.productName}</div>
+                            <div className="text-[11px] text-emerald-200">
+                              ₹{m.cartAction.price} each • Subtotal: ₹{m.cartAction.price * m.cartAction.quantity}
+                            </div>
+                            <div className="text-[10px] text-emerald-400/80">
+                              Seller: {m.cartAction.product.sellerName}
+                            </div>
+                          </div>
+                        </div>
+
+                        <button
+                          type="button"
+                          onClick={() => setActiveTab('cart')}
+                          className="w-full py-2 px-3 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer text-xs"
+                        >
+                          <ShoppingBag className="w-3.5 h-3.5" />
+                          <span>View Cart & Proceed to Checkout</span>
+                        </button>
+                      </div>
+                    )}
                   </div>
 
                   <span className="text-[10px] text-slate-400 px-2">{m.timestamp}</span>
@@ -328,6 +463,20 @@ export const AIShoppingView: React.FC = () => {
         <div className="p-3 bg-white border-t border-slate-200 flex items-center gap-2 overflow-x-auto scrollbar-none text-xs">
           <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider shrink-0">Try asking:</span>
           <button
+            onClick={() => handleSend('Add Dolo 650 to cart')}
+            className="shrink-0 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors cursor-pointer font-bold flex items-center gap-1.5"
+          >
+            <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Add Dolo 650 to cart</span>
+          </button>
+          <button
+            onClick={() => handleSend('Add 2 fresh ragi idli to cart')}
+            className="shrink-0 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors cursor-pointer font-bold flex items-center gap-1.5"
+          >
+            <ShoppingBag className="w-3.5 h-3.5 text-emerald-600" />
+            <span>Add 2 Ragi Idli to cart</span>
+          </button>
+          <button
             onClick={() => handleSend('Check 30-minute express delivery eligibility for Bangalore 560103')}
             className="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors cursor-pointer"
           >
@@ -339,18 +488,6 @@ export const AIShoppingView: React.FC = () => {
           >
             ಡೋಲೋ 650 ಪ್ರಮಾಣ (Dolo Dosage)
           </button>
-          <button
-            onClick={() => handleSend('Compare ASUS TUF Gaming F15 with Dell Inspiron 15')}
-            className="shrink-0 bg-slate-100 hover:bg-slate-200 text-slate-700 px-3 py-1.5 rounded-xl border border-slate-200 transition-colors cursor-pointer"
-          >
-            💻 Compare Laptops
-          </button>
-          <button
-            onClick={() => handleSend('Order 2 Dolo 650 Tablets to Bangalore 560103')}
-            className="shrink-0 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 px-3 py-1.5 rounded-xl border border-emerald-200 transition-colors cursor-pointer font-semibold"
-          >
-            🛒 Order Dolo 650 via AI
-          </button>
         </div>
 
         {/* Chat Input */}
@@ -360,11 +497,23 @@ export const AIShoppingView: React.FC = () => {
               e.preventDefault();
               handleSend();
             }}
-            className="flex items-center gap-3"
+            className="flex items-center gap-2 sm:gap-3"
           >
+            <button
+              type="button"
+              onClick={toggleSpeechRecognition}
+              title={isListening ? 'Stop recording voice' : 'Speak voice question'}
+              className={`p-3 rounded-2xl transition-all cursor-pointer flex items-center justify-center shrink-0 ${
+                isListening
+                  ? 'bg-rose-600 text-white animate-pulse ring-2 ring-rose-400/50 shadow-md'
+                  : 'bg-slate-200 hover:bg-slate-300 text-slate-700'
+              }`}
+            >
+              {isListening ? <Mic className="w-4 h-4 animate-bounce" /> : <Mic className="w-4 h-4" />}
+            </button>
             <input
               type="text"
-              placeholder="Ask anything about medicines, laptops, organic food in English or ಕನ್ನಡ..."
+              placeholder={isListening ? '🎙️ Listening to your voice... speak now' : 'Ask anything about medicines, laptops, organic food in English or ಕನ್ನಡ...'}
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
@@ -373,7 +522,8 @@ export const AIShoppingView: React.FC = () => {
             <button
               type="submit"
               disabled={!input.trim() || loading}
-              className="p-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-2xl transition-all shadow-md cursor-pointer"
+              className="p-3 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-40 text-white rounded-2xl transition-all shadow-md cursor-pointer shrink-0"
+              title="Send message"
             >
               <Send className="w-4 h-4" />
             </button>

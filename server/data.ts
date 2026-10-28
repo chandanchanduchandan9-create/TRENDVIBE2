@@ -89,9 +89,16 @@ export const INITIAL_USERS: User[] = [
     name: 'Chandan Kumar',
     email: 'chandanchanduchandan9@gmail.com',
     phone: '+91 98450 12345',
+    password: 'Password@123',
     role: 'customer',
     avatarUrl: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?auto=format&fit=crop&w=200&q=80',
     createdAt: '2026-01-10T10:00:00Z',
+    voiceProfile: {
+      isEnrolled: true,
+      voiceprintId: 'VP-CHANDAN-7721',
+      enrolledAt: '2026-02-15T12:00:00Z',
+      confidence: 0.986,
+    },
     addresses: [
       {
         id: 'addr-1',
@@ -122,21 +129,35 @@ export const INITIAL_USERS: User[] = [
     name: 'Priya Sharma',
     email: 'seller@trendvibe.com',
     phone: '+91 98860 55432',
+    password: 'Seller@Secure2026',
     role: 'seller',
     storeName: 'TrendVibe Central Hub & HealthMart',
     storeDescription: 'Authorised multi-category distributor specializing in certified healthcare, tech gadgets, and fresh health kitchens.',
     isApprovedSeller: true,
     avatarUrl: 'https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=200&q=80',
     createdAt: '2025-11-01T08:00:00Z',
+    voiceProfile: {
+      isEnrolled: true,
+      voiceprintId: 'VP-PRIYA-9942',
+      enrolledAt: '2026-02-10T11:00:00Z',
+      confidence: 0.991,
+    },
   },
   {
     id: 'usr-admin-1',
     name: 'Rajesh Hegde',
     email: 'admin@trendvibe.com',
     phone: '+91 98451 99999',
+    password: 'Admin@Master2026',
     role: 'admin',
     avatarUrl: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?auto=format&fit=crop&w=200&q=80',
     createdAt: '2025-01-01T00:00:00Z',
+    voiceProfile: {
+      isEnrolled: true,
+      voiceprintId: 'VP-ADMIN-0001',
+      enrolledAt: '2026-01-01T09:00:00Z',
+      confidence: 0.998,
+    },
   },
 ];
 

@@ -1,16 +1,25 @@
 export type Role = 'customer' | 'seller' | 'admin';
 
+export interface VoiceProfile {
+  isEnrolled: boolean;
+  voiceprintId: string;
+  enrolledAt: string;
+  confidence: number;
+}
+
 export interface User {
   id: string;
   name: string;
   email: string;
   phone: string;
   role: Role;
+  password?: string;
   storeName?: string;
   storeDescription?: string;
   isApprovedSeller?: boolean;
   avatarUrl?: string;
   addresses?: Address[];
+  voiceProfile?: VoiceProfile;
   createdAt: string;
 }
 
@@ -65,6 +74,10 @@ export interface ProductDeliveryConfig {
   freeShippingAbove: number;
   returnPolicyDays: number;
   serviceablePincodes: string[];
+  locationBasedSellingEnabled?: boolean;
+  serviceCity?: string;
+  deliverySpeed?: 'standard' | 'express_sameday' | 'quick_30min' | 'all';
+  quickDeliveryCharge?: number;
 }
 
 export interface Product {
@@ -96,6 +109,9 @@ export interface Product {
   sellerName: string;
   instagramUrl?: string;
   officialSourceUrl?: string;
+  pdfDocName?: string;
+  pdfDocUrl?: string;
+  pdfExtractedText?: string;
   lastVerifiedDate?: string;
   isVerifiedInfo: boolean;
   deliveryConfig: ProductDeliveryConfig;
@@ -286,4 +302,15 @@ export interface SellerFinanceMetrics {
   onlineSettled: number;
   onlinePendingSettlement: number;
   outstandingRefunds: number;
+}
+
+export interface PriceDropAlert {
+  id: string;
+  productId: string;
+  productName: string;
+  userEmail: string;
+  targetPrice: number;
+  currentPrice: number;
+  createdAt: string;
+  status: 'active' | 'triggered';
 }

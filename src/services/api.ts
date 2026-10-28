@@ -48,15 +48,20 @@ async function request<T>(endpoint: string, options: RequestInit = {}): Promise<
 export const api = {
   // Auth
   getCurrentUser: () => request<{ user: User; token: string }>('/api/auth/me'),
-  login: (email: string) =>
+  login: (credentials: { email: string; phone: string; password: string; role?: string }) =>
     request<{ user: User; token: string }>('/api/auth/login', {
       method: 'POST',
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(credentials),
     }),
   register: (data: any) =>
     request<{ user: User; token: string }>('/api/auth/register', {
       method: 'POST',
       body: JSON.stringify(data),
+    }),
+  calibrateVoiceProfile: (data?: { voiceprintId?: string; confidence?: number }) =>
+    request<{ user: User; success: boolean }>('/api/auth/voice-profile', {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
     }),
   getSwitchUsers: () => request<User[]>('/api/users/switch-list'),
 
@@ -88,6 +93,11 @@ export const api = {
   deleteProduct: (id: string) =>
     request<{ success: boolean }>(`/api/products/${id}`, {
       method: 'DELETE',
+    }),
+  uploadProductImage: (fileName: string, dataUrl: string) =>
+    request<{ imageUrl: string; fileName: string; size: number }>('/api/upload/image', {
+      method: 'POST',
+      body: JSON.stringify({ fileName, dataUrl }),
     }),
 
   // Inventory
@@ -172,7 +182,16 @@ export const api = {
       languageDetected: 'en' | 'kn';
       citations: string[];
       orderProposal?: any;
+      cartAction?: {
+        type: 'ADD_TO_CART';
+        productId: string;
+        productName: string;
+        quantity: number;
+        price: number;
+        product: any;
+      };
       productContext?: any;
+      isEnding?: boolean;
     }>('/api/zyro-ai/chat', {
       method: 'POST',
       body: JSON.stringify(data),
@@ -200,4 +219,28 @@ export const api = {
     }>('/api/supabase/sync', {
       method: 'POST',
     }),
+
+  // Price Drop Alerts
+  createPriceAlert: (data: {
+    productId: string;
+    productName: string;
+    userEmail: string;
+    targetPrice: number;
+    currentPrice: number;
+  }) =>
+    request<{
+      alert: any;
+      emailSimulation: {
+        to: string;
+        subject: string;
+        body: string;
+        sentAt: string;
+        status: string;
+      };
+    }>('/api/price-alerts', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+  getPriceAlerts: (email?: string) =>
+    request<any[]>(`/api/price-alerts${email ? `?email=${encodeURIComponent(email)}` : ''}`),
 };

@@ -57,6 +57,24 @@ interface AppContextType {
 
   expressPincodes: string[];
   checkExpressServiceability: (pincode: string) => boolean;
+
+  // Secure Role-Based Login Modal
+  isLoginModalOpen: boolean;
+  loginModalDefaultRole: 'customer' | 'seller' | 'admin';
+  openLoginModal: (role?: 'customer' | 'seller' | 'admin') => void;
+  closeLoginModal: () => void;
+  handleLogin: (credentials: { email: string; phone: string; password: string; role?: string }) => Promise<void>;
+  handleRegister: (data: {
+    name: string;
+    email: string;
+    phone: string;
+    password?: string;
+    role: 'customer' | 'seller';
+    storeName?: string;
+    storeDescription?: string;
+  }) => Promise<void>;
+  logout: () => void;
+  calibrateUserVoiceProfile: () => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -153,6 +171,97 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       setCategories(cats);
     } catch (e) {
       console.error(e);
+    }
+  };
+
+  const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
+  const [loginModalDefaultRole, setLoginModalDefaultRole] = useState<'customer' | 'seller' | 'admin'>('customer');
+
+  const openLoginModal = (role?: 'customer' | 'seller' | 'admin') => {
+    if (role) setLoginModalDefaultRole(role);
+    setIsLoginModalOpen(true);
+  };
+
+  const closeLoginModal = () => {
+    setIsLoginModalOpen(false);
+  };
+
+  const handleLogin = async (credentials: { email: string; phone: string; password: string; role?: string }) => {
+    try {
+      const res = await api.login(credentials);
+      if (res?.user && res?.token) {
+        setStoredToken(res.token);
+        setUser(res.user);
+        setIsLoginModalOpen(false);
+        showToast(`Authenticated as ${res.user.name} (${res.user.role.toUpperCase()})`, 'success');
+
+        // Automatic redirect based on authenticated role
+        if (res.user.role === 'seller') {
+          setActiveTab('seller-dashboard');
+        } else if (res.user.role === 'admin') {
+          setActiveTab('admin-dashboard');
+        } else {
+          setActiveTab('storefront');
+        }
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Login failed', 'error');
+      throw err;
+    }
+  };
+
+  const handleRegister = async (data: {
+    name: string;
+    email: string;
+    phone: string;
+    password?: string;
+    role: 'customer' | 'seller';
+    storeName?: string;
+    storeDescription?: string;
+  }) => {
+    try {
+      const res = await api.register(data);
+      if (res?.user && res?.token) {
+        setStoredToken(res.token);
+        setUser(res.user);
+        setIsLoginModalOpen(false);
+        showToast(`Account created! Welcome, ${res.user.name} (${res.user.role.toUpperCase()})`, 'success');
+
+        // Refresh switch personas list
+        api.getSwitchUsers().then((users) => {
+          if (users) setAvailableUsers(users);
+        }).catch(() => {});
+
+        // Automatic redirect based on authenticated role
+        if (res.user.role === 'seller') {
+          setActiveTab('seller-dashboard');
+        } else {
+          setActiveTab('storefront');
+        }
+      }
+    } catch (err: any) {
+      showToast(err.message || 'Registration failed', 'error');
+      throw err;
+    }
+  };
+
+  const logout = () => {
+    setStoredToken('');
+    // Revert to null or guest
+    setUser(null);
+    showToast('Signed out successfully.', 'info');
+    setActiveTab('storefront');
+  };
+
+  const calibrateUserVoiceProfile = async () => {
+    try {
+      const res = await api.calibrateVoiceProfile();
+      if (res.user) {
+        setUser(res.user);
+        showToast('Acoustic voice print calibrated and saved to your profile!', 'success');
+      }
+    } catch (err: any) {
+      showToast(`Voice calibration notice: ${err.message}`, 'info');
     }
   };
 
@@ -319,6 +428,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         showToast,
         expressPincodes: EXPRESS_PINCODES,
         checkExpressServiceability,
+        isLoginModalOpen,
+        loginModalDefaultRole,
+        openLoginModal,
+        closeLoginModal,
+        handleLogin,
+        handleRegister,
+        logout,
+        calibrateUserVoiceProfile,
       }}
     >
       {children}

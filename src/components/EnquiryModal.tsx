@@ -10,6 +10,9 @@ import {
   Check,
   CheckCircle2,
   HelpCircle,
+  ShoppingBag,
+  Zap,
+  ShieldCheck,
 } from 'lucide-react';
 
 export const EnquiryModal: React.FC = () => {
@@ -19,6 +22,8 @@ export const EnquiryModal: React.FC = () => {
     user,
     showToast,
     startCallingZyro,
+    addToCart,
+    setActiveTab,
   } = useApp();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -47,12 +52,13 @@ export const EnquiryModal: React.FC = () => {
 
   if (!selectedEnquiryProductId || !product) return null;
 
-  const enquiryUrl = `${window.location.origin}?enquire=${product.id}`;
+  // Authoritative shareable enquiry link preserving product ID and seller ID
+  const enquiryUrl = `${window.location.origin}?enquire=${encodeURIComponent(product.id)}&sellerId=${encodeURIComponent(product.sellerId || '')}`;
 
   const handleCopy = () => {
     navigator.clipboard.writeText(enquiryUrl);
     setCopiedLink(true);
-    showToast('Enquiry Link Copied!', 'success');
+    showToast('Enquiry Link Copied with Verified Seller ID!', 'success');
     setTimeout(() => setCopiedLink(false), 2000);
   };
 
@@ -100,28 +106,64 @@ export const EnquiryModal: React.FC = () => {
           </button>
         </div>
 
-        {/* Product Card Snippet */}
-        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-200/80 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-3 truncate">
-            <img
-              src={product.images[0]}
-              alt={product.name}
-              className="w-12 h-12 rounded-xl object-cover bg-white shrink-0 border border-slate-200"
-            />
-            <div className="truncate">
-              <div className="font-bold text-xs text-slate-900 truncate">{product.name}</div>
-              <div className="text-[10px] text-slate-500 font-semibold">
-                ₹{product.price} • In Stock: {product.stock.available}
+        {/* Product Card Snippet with Authoritative Seller Identity */}
+        <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200/80 space-y-2.5">
+          <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center gap-3 truncate">
+              <img
+                src={product.images[0]}
+                alt={product.name}
+                className="w-14 h-14 rounded-xl object-cover bg-white shrink-0 border border-slate-200"
+              />
+              <div className="truncate">
+                <div className="font-bold text-xs text-slate-900 truncate">{product.name}</div>
+                <div className="text-[11px] text-slate-500 font-semibold mt-0.5">
+                  ₹{product.price.toLocaleString('en-IN')}{product.mrp > product.price && <span className="line-through text-slate-400 ml-1">₹{product.mrp}</span>}
+                  <span className="text-emerald-600 ml-1.5 font-bold">● {product.stock.available > 0 ? `${product.stock.available} In Stock` : 'Out of Stock'}</span>
+                </div>
+                <div className="flex items-center gap-1.5 mt-1">
+                  <span className="bg-indigo-50 text-indigo-700 text-[10px] font-bold px-2 py-0.5 rounded-md border border-indigo-200/60 flex items-center gap-1">
+                    <ShieldCheck className="w-3 h-3 text-indigo-600" />
+                    Verified Seller: {product.sellerName}
+                  </span>
+                </div>
               </div>
             </div>
+            <button
+              onClick={handleCopy}
+              className="shrink-0 p-2 text-slate-500 hover:text-indigo-600 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 transition-colors cursor-pointer"
+              title="Copy Enquiry Link"
+            >
+              {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
+            </button>
           </div>
-          <button
-            onClick={handleCopy}
-            className="shrink-0 p-2 text-slate-500 hover:text-indigo-600 bg-white rounded-xl border border-slate-200 hover:border-indigo-300 transition-colors cursor-pointer"
-            title="Copy Enquiry Link"
-          >
-            {copiedLink ? <Check className="w-4 h-4 text-emerald-600" /> : <Copy className="w-4 h-4" />}
-          </button>
+
+          {/* Action Row: Buy Now & Add to Cart */}
+          <div className="flex items-center gap-2 pt-1.5 border-t border-slate-200/70">
+            <button
+              type="button"
+              onClick={() => {
+                addToCart(product, 1);
+                closeEnquiryModal();
+                setActiveTab('cart');
+              }}
+              className="flex-1 py-2 px-3 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 fill-current" />
+              <span>Buy Now</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                addToCart(product, 1);
+                showToast(`Added "${product.name}" to your cart!`, 'success');
+              }}
+              className="flex-1 py-2 px-3 bg-white hover:bg-slate-100 text-slate-800 font-bold text-xs rounded-xl border border-slate-300 shadow-xs transition-all flex items-center justify-center gap-1.5 cursor-pointer"
+            >
+              <ShoppingBag className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Add to Cart</span>
+            </button>
+          </div>
         </div>
 
         {/* Instant Answer via Zyro AI Option */}
@@ -129,7 +171,7 @@ export const EnquiryModal: React.FC = () => {
           <div className="text-xs text-indigo-900">
             <span className="font-bold block">Need an instant answer?</span>
             <span className="text-[11px] text-indigo-700">
-              Zyro AI has access to manufacturer documents and stock rules.
+              Zyro AI has access to {product.sellerName}'s verified product data.
             </span>
           </div>
           <button

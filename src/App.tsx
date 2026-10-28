@@ -10,6 +10,8 @@ import { SellerDashboard } from './components/SellerDashboard.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { ZyroCallingModal } from './components/ZyroCallingModal.tsx';
 import { EnquiryModal } from './components/EnquiryModal.tsx';
+import { LoginModal } from './components/LoginModal.tsx';
+import { RetellVoiceWidget } from './components/RetellVoiceWidget.tsx';
 import { Sparkles, PhoneCall, CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 const MainApp: React.FC = () => {
@@ -63,29 +65,13 @@ const MainApp: React.FC = () => {
         {activeTab === 'admin-dashboard' && <AdminDashboard />}
       </main>
 
-      {/* Floating Call Zyro AI Quick Action Button */}
-      <div className="fixed bottom-6 right-6 z-30">
-        <button
-          onClick={() => startCallingZyro()}
-          className="group px-4 py-3 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-2xl shadow-xl shadow-emerald-600/30 font-extrabold text-xs flex items-center gap-2.5 transition-all transform hover:scale-105 cursor-pointer border border-white/20"
-          title="Launch bilingual AI calling agent in English or ಕನ್ನಡ"
-        >
-          <div className="w-7 h-7 rounded-xl bg-white/20 flex items-center justify-center">
-            <PhoneCall className="w-4 h-4 text-emerald-200 animate-bounce" />
-          </div>
-          <div className="text-left leading-tight hidden sm:block">
-            <div className="flex items-center gap-1">
-              <span>Call Zyro AI</span>
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-300 animate-ping"></span>
-            </div>
-            <div className="text-[10px] text-emerald-200 font-normal">English & ಕನ್ನಡ Voice</div>
-          </div>
-        </button>
-      </div>
+      {/* Floating "Talk to Zyro AI" Button Connected to Retell AI Voice Agent */}
+      <RetellVoiceWidget />
 
       {/* Modals & Overlays */}
       <ZyroCallingModal />
       <EnquiryModal />
+      <LoginModal />
 
       {/* Toast Notification Container */}
       <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2 pointer-events-none max-w-sm">

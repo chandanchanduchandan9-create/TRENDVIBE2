@@ -28,32 +28,33 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   selectedCategory,
   setSelectedCategory,
 }) => {
-  const { categories, startCallingZyro, setActiveTab, showToast } = useApp();
+  const { categories, startCallingZyro, setActiveTab, showToast, activeTab } = useApp();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
-  const [sortBy, setSortBy] = useState<'rating' | 'price-asc' | 'price-desc' | 'newest'>('rating');
+  const [sortBy, setSortBy] = useState<'newest' | 'rating' | 'price-asc' | 'price-desc'>('newest');
   const [selectedBrand, setSelectedBrand] = useState<string>('all');
   const [expressOnly, setExpressOnly] = useState(false);
 
-  useEffect(() => {
-    async function loadProducts() {
-      setLoading(true);
-      try {
-        const data = await api.getProducts({
-          category: selectedCategory !== 'all' ? selectedCategory : undefined,
-          search: searchQuery || undefined,
-          sortBy,
-        });
-        setProducts(data);
-      } catch (err: any) {
-        showToast(`Failed to load products: ${err.message}`, 'error');
-      } finally {
-        setLoading(false);
-      }
+  const fetchProducts = async () => {
+    setLoading(true);
+    try {
+      const data = await api.getProducts({
+        category: selectedCategory !== 'all' ? selectedCategory : undefined,
+        search: searchQuery || undefined,
+        sortBy,
+      });
+      setProducts(data);
+    } catch (err: any) {
+      showToast(`Failed to load products: ${err.message}`, 'error');
+    } finally {
+      setLoading(false);
     }
-    loadProducts();
-  }, [selectedCategory, searchQuery, sortBy]);
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, [selectedCategory, searchQuery, sortBy, activeTab]);
 
   // Extract unique brands
   const brands = ['all', ...Array.from(new Set(products.map((p) => p.brand)))];
@@ -82,12 +83,12 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
             Curated Shopping, Elevated by{' '}
             <span className="bg-gradient-to-r from-indigo-300 via-indigo-100 to-violet-300 bg-clip-text text-transparent">
-              Bilingual AI Calling
+              AI Voice Calling
             </span>
           </h1>
 
           <p className="text-slate-300 text-xs sm:text-base leading-relaxed max-w-2xl">
-            Explore 8 certified product categories from healthcare & fresh food to flagship 5G smartphones and gaming laptops. Speak to Zyro AI in English or ಕನ್ನಡ for instant verified recommendations and 30-minute express deliveries.
+            Explore 8 certified product categories from healthcare & fresh food to flagship 5G smartphones and gaming laptops. Speak with Zyro AI for instant verified recommendations, price drop tracking, and 30-minute express deliveries.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
@@ -96,7 +97,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
               className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all transform hover:scale-105 cursor-pointer"
             >
               <PhoneCall className="w-4 h-4" />
-              <span>Call Zyro AI (English & ಕನ್ನಡ)</span>
+              <span>Call Zyro AI Voice Assistant</span>
             </button>
 
             <button
@@ -162,8 +163,8 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
                     )}
                   </div>
                   <div className="font-extrabold text-xs text-slate-900 line-clamp-1">{cat.name.split(' ')[0]}</div>
-                  <div className="text-[10px] text-slate-500 font-['Noto_Sans_Kannada',sans-serif] line-clamp-1 mt-0.5">
-                    {cat.kannadaName.split(' ')[0]}
+                  <div className="text-[10px] text-slate-400 font-medium line-clamp-1 mt-0.5">
+                    {cat.name.split(' ').slice(1).join(' ') || 'Catalog'}
                   </div>
                 </div>
               </button>
