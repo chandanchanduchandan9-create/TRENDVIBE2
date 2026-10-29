@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { User, Product, CategoryInfo, OrderItem } from '../types/index.ts';
 import { api, setStoredToken, getStoredToken } from '../services/api.ts';
+import { isProductExpress30MinEligible } from '../utils/delivery.ts';
 
 export interface CartItem {
   product: Product;
@@ -344,7 +345,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     const discount = subtotal > 1500 ? 100 : 0;
     const tax = Math.round(subtotal * 0.05);
     const hasExpressEligibleItems = cart.some(
-      (it) => it.product.category === 'medicines-healthcare' || it.product.category === 'food'
+      (it) => isProductExpress30MinEligible(it.product)
     );
     const shippingFee = subtotal > 499 || subtotal === 0 ? 0 : 25;
     const total = subtotal - discount + tax + shippingFee;

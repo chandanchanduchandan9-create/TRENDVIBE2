@@ -46,34 +46,12 @@ export const LoginModal: React.FC = () => {
     if (isLoginModalOpen) {
       setSelectedRole(loginModalDefaultRole);
       setErrorMsg(null);
-      if (authMode === 'signin') {
-        applyDemoCredentials(loginModalDefaultRole);
-      }
     }
   }, [isLoginModalOpen, loginModalDefaultRole, authMode]);
 
-  const applyDemoCredentials = (role: 'customer' | 'seller' | 'admin') => {
-    setErrorMsg(null);
-    if (role === 'customer') {
-      setEmail('chandanchanduchandan9@gmail.com');
-      setPhone('9845012345');
-      setPassword('Password@123');
-    } else if (role === 'seller') {
-      setEmail('seller@trendvibe.com');
-      setPhone('9886055432');
-      setPassword('Seller@Secure2026');
-    } else {
-      setEmail('admin@trendvibe.com');
-      setPhone('9845199999');
-      setPassword('Admin@Master2026');
-    }
-  };
-
   const handleTabChange = (role: 'customer' | 'seller' | 'admin') => {
     setSelectedRole(role);
-    if (authMode === 'signin') {
-      applyDemoCredentials(role);
-    }
+    setErrorMsg(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -446,23 +424,6 @@ export const LoginModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* Quick Demo Autofill helper button (Sign In mode only) */}
-              {authMode === 'signin' && (
-                <div className="pt-1">
-                  <button
-                    type="button"
-                    onClick={() => applyDemoCredentials(selectedRole)}
-                    className="w-full py-2 px-3 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded-xl border border-slate-200 flex items-center justify-between transition-colors cursor-pointer"
-                  >
-                    <span className="flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                      <span>Use Quick {selectedRole.toUpperCase()} Demo Credentials</span>
-                    </span>
-                    <span className="text-[10px] text-indigo-600 uppercase font-semibold">Fill Details</span>
-                  </button>
-                </div>
-              )}
-
               {/* Submit Button */}
               <button
                 type="submit"
@@ -517,7 +478,6 @@ export const LoginModal: React.FC = () => {
                       onClick={() => {
                         setAuthMode('signin');
                         setErrorMsg(null);
-                        applyDemoCredentials(selectedRole);
                       }}
                       className="font-bold text-indigo-600 hover:text-indigo-700 underline cursor-pointer"
                     >

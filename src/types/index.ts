@@ -71,6 +71,7 @@ export interface ProductDeliveryConfig {
   preparationMinutes: number;
   standardDeliveryDays: number;
   shippingFee: number;
+  deliveryFee?: number;
   freeShippingAbove: number;
   returnPolicyDays: number;
   serviceablePincodes: string[];
@@ -98,6 +99,9 @@ export interface Product {
   images: string[];
   variants?: ProductVariant[];
   specifications: Record<string, string>;
+  minOrderQuantity?: number;
+  sellingUnit?: string;
+  customizationOptions?: any;
   tags: string[];
   stock: {
     onHand: number;
@@ -213,6 +217,8 @@ export interface Order {
   paymentMethod: 'COD' | 'ONLINE_RAZORPAY';
   paymentStatus: 'PENDING' | 'PAID' | 'FAILED' | 'REFUNDED';
   paymentId?: string;
+  razorpayOrderId?: string;
+  razorpaySignature?: string;
   orderStatus: OrderStatus;
   isExpress30Min: boolean;
   estimatedDeliveryTime?: string;

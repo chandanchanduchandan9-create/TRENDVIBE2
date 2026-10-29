@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Product, SellerDocument } from '../types/index.ts';
 import { useApp } from '../context/AppContext.tsx';
 import { api } from '../services/api.ts';
+import { isProductExpress30MinEligible, getProductDeliveryInfo } from '../utils/delivery.ts';
 import {
   ArrowLeft,
   Sparkles,
@@ -41,6 +42,8 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
   const [copiedEnquiry, setCopiedEnquiry] = useState(false);
   const [attachedDocs, setAttachedDocs] = useState<SellerDocument[]>([]);
   const [selectedDocPreview, setSelectedDocPreview] = useState<SellerDocument | null>(null);
+  const [pincodeInput, setPincodeInput] = useState<string>('');
+  const [pincodeChecked, setPincodeChecked] = useState<boolean>(false);
 
   // Price Drop Alert State
   const [showPriceAlertModal, setShowPriceAlertModal] = useState(false);
@@ -242,7 +245,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
                 {product.discountPercent}% OFF
               </span>
             )}
-            {product.deliveryConfig.supportsExpress30Min && (
+            {isProductExpress30MinEligible(product) && (
               <span className="absolute top-4 right-4 bg-emerald-600 text-white font-bold text-xs px-3 py-1 rounded-full shadow-md flex items-center gap-1.5 border border-emerald-400/40">
                 <Zap className="w-3 h-3 text-amber-300 fill-amber-300" />
                 ⚡ 30-Min Express
@@ -363,15 +366,55 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
                 )}
               </div>
 
-              {product.deliveryConfig.supportsExpress30Min && (
-                <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 flex items-start gap-2.5">
-                  <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
-                  <div>
-                    <span className="font-bold">⚡ 30-Minute Hyper-Local Express Delivery Eligible!</span>
-                    <p className="text-emerald-700 mt-0.5">
-                      Dispatched instantly from local fulfillment hub for Bangalore pin codes (560001, 560038, 560103, 560068, 560034, 560008).
-                    </p>
+              {isProductExpress30MinEligible(product) ? (
+                <div className="p-3 bg-emerald-50/80 border border-emerald-200 rounded-xl text-xs text-emerald-900 space-y-2">
+                  <div className="flex items-start gap-2.5">
+                    <Zap className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <span className="font-bold">⚡ 30-Minute Hyper-Local Express Delivery Eligible!</span>
+                      <p className="text-emerald-700 mt-0.5">
+                        Dispatched instantly from local fulfillment hub. Serviceable pincodes: {product.deliveryConfig?.serviceablePincodes?.includes('*') ? 'All Bangalore PINs' : (product.deliveryConfig?.serviceablePincodes?.join(', ') || '560001, 560038, 560103, 560068, 560034, 560008')}.
+                      </p>
+                    </div>
                   </div>
+
+                  {/* Customer PIN Code Checker */}
+                  <div className="pt-2 border-t border-emerald-200/60 flex items-center gap-2">
+                    <input
+                      type="text"
+                      maxLength={6}
+                      placeholder="Check your PIN code"
+                      value={pincodeInput}
+                      onChange={(e) => {
+                        setPincodeInput(e.target.value.replace(/\D/g, ''));
+                        setPincodeChecked(false);
+                      }}
+                      className="px-2.5 py-1 text-xs bg-white border border-emerald-300 rounded-lg text-slate-800 focus:outline-none focus:ring-1 focus:ring-emerald-500 w-36"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPincodeChecked(true)}
+                      className="px-2.5 py-1 bg-emerald-700 text-white rounded-lg text-xs font-bold hover:bg-emerald-800 transition-colors cursor-pointer"
+                    >
+                      Check
+                    </button>
+                    {pincodeChecked && pincodeInput.length === 6 && (
+                      <span className="text-[11px] font-semibold">
+                        {isProductExpress30MinEligible(product, pincodeInput) ? (
+                          <span className="text-emerald-700 flex items-center gap-1">✓ 30-min express available for {pincodeInput}</span>
+                        ) : (
+                          <span className="text-amber-700">Standard delivery only for {pincodeInput}</span>
+                        )}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-700 flex items-center gap-2">
+                  <Truck className="w-4 h-4 text-slate-500 shrink-0" />
+                  <span>
+                    Standard Delivery: 2–4 business days across India. {product.deliveryConfig?.deliveryFee === 0 ? 'Free Shipping.' : `Flat ₹${product.deliveryConfig?.deliveryFee || 49} shipping.`}
+                  </span>
                 </div>
               )}
             </div>

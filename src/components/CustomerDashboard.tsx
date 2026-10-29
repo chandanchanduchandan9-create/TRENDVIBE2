@@ -308,12 +308,22 @@ export const CustomerDashboard: React.FC = () => {
                     <span className="font-bold text-slate-700 block mb-1">Payment & Charges:</span>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Method:</span>
-                      <span className="font-bold text-slate-900">{selectedOrder.paymentMethod}</span>
+                      <span className="font-bold text-slate-900">
+                        {selectedOrder.paymentMethod === 'ONLINE_RAZORPAY' ? 'Razorpay Online' : selectedOrder.paymentMethod}
+                      </span>
                     </div>
                     <div className="flex justify-between">
                       <span className="text-slate-500">Status:</span>
-                      <span className="font-bold text-emerald-600">{selectedOrder.paymentStatus}</span>
+                      <span className={`font-bold ${selectedOrder.paymentStatus === 'PAID' ? 'text-emerald-600' : 'text-amber-600'}`}>
+                        {selectedOrder.paymentStatus}
+                      </span>
                     </div>
+                    {selectedOrder.paymentId && (
+                      <div className="flex justify-between text-[11px]">
+                        <span className="text-slate-500">Payment Ref:</span>
+                        <span className="font-mono text-slate-700 truncate max-w-[150px]">{selectedOrder.paymentId}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between border-t border-slate-200 pt-1 font-bold text-sm">
                       <span>Total Paid:</span>
                       <span className="text-indigo-600">

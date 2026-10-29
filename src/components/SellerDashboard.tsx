@@ -11,6 +11,7 @@ import {
 } from '../types/index.ts';
 import { api } from '../services/api.ts';
 import { parsePdfFile } from '../services/pdfParser.ts';
+import { isProductExpress30MinEligible } from '../utils/delivery.ts';
 import {
   Layers,
   Package,
@@ -100,17 +101,19 @@ export const SellerDashboard: React.FC = () => {
     pdfDocUrl: '',
     pdfExtractedText: '',
     status: 'published',
+    minOrderQuantity: 1,
+    sellingUnit: 'piece',
     deliveryConfig: {
-      supportsExpress30Min: true,
+      locationBasedSellingEnabled: false,
+      supportsExpress30Min: false,
+      deliverySpeed: 'standard',
       preparationMinutes: 15,
       standardDeliveryDays: 2,
       shippingFee: 25,
       freeShippingAbove: 499,
       returnPolicyDays: 7,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034'],
-      locationBasedSellingEnabled: true,
       serviceCity: 'Bangalore',
-      deliverySpeed: 'all',
       quickDeliveryCharge: 40,
     },
   };
@@ -306,18 +309,24 @@ export const SellerDashboard: React.FC = () => {
         pdfDocUrl: productForm.pdfDocUrl || '',
         pdfExtractedText: productForm.pdfExtractedText || '',
         isVerifiedInfo: true,
-        deliveryConfig: productForm.deliveryConfig || {
-          supportsExpress30Min: true,
-          preparationMinutes: 15,
-          standardDeliveryDays: 2,
-          shippingFee: 25,
-          freeShippingAbove: 499,
-          returnPolicyDays: 7,
-          serviceablePincodes: ['560001', '560038', '560103', '560068', '560034'],
-          locationBasedSellingEnabled: true,
-          serviceCity: 'Bangalore',
-          deliverySpeed: 'all',
-          quickDeliveryCharge: 40,
+        minOrderQuantity: Number(productForm.minOrderQuantity || 1),
+        sellingUnit: productForm.sellingUnit || 'piece',
+        deliveryConfig: {
+          locationBasedSellingEnabled: productForm.deliveryConfig?.locationBasedSellingEnabled === true,
+          supportsExpress30Min:
+            productForm.deliveryConfig?.locationBasedSellingEnabled === true &&
+            productForm.deliveryConfig?.supportsExpress30Min === true &&
+            productForm.deliveryConfig?.deliverySpeed !== 'standard' &&
+            productForm.deliveryConfig?.deliverySpeed !== 'express_sameday',
+          deliverySpeed: productForm.deliveryConfig?.deliverySpeed || (productForm.deliveryConfig?.locationBasedSellingEnabled ? 'all' : 'standard'),
+          preparationMinutes: productForm.deliveryConfig?.preparationMinutes || 15,
+          standardDeliveryDays: productForm.deliveryConfig?.standardDeliveryDays || 2,
+          shippingFee: productForm.deliveryConfig?.shippingFee ?? 25,
+          freeShippingAbove: productForm.deliveryConfig?.freeShippingAbove ?? 499,
+          returnPolicyDays: productForm.deliveryConfig?.returnPolicyDays ?? 7,
+          serviceablePincodes: productForm.deliveryConfig?.serviceablePincodes || ['560001', '560038', '560103', '560068', '560034'],
+          serviceCity: productForm.deliveryConfig?.serviceCity || 'Bangalore',
+          quickDeliveryCharge: productForm.deliveryConfig?.quickDeliveryCharge ?? 40,
         },
       };
 
@@ -582,12 +591,14 @@ export const SellerDashboard: React.FC = () => {
                           </div>
                         </td>
                         <td className="p-3.5">
-                          {p.deliveryConfig.supportsExpress30Min ? (
-                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full">
-                              ⚡ Enabled
+                          {isProductExpress30MinEligible(p) ? (
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full inline-flex items-center gap-1">
+                              ⚡ 30-Min Active
                             </span>
                           ) : (
-                            <span className="text-slate-400 text-[10px]">Standard</span>
+                            <span className="text-slate-500 bg-slate-100 text-[10px] font-medium px-2 py-0.5 rounded-full">
+                              Standard
+                            </span>
                           )}
                         </td>
                         <td className="p-3.5">
@@ -1418,29 +1429,43 @@ export const SellerDashboard: React.FC = () => {
                     <label className="relative inline-flex items-center cursor-pointer">
                       <input
                         type="checkbox"
-                        checked={productForm.deliveryConfig?.locationBasedSellingEnabled ?? true}
-                        onChange={(e) =>
+                        checked={productForm.deliveryConfig?.locationBasedSellingEnabled === true}
+                        onChange={(e) => {
+                          const isEnabled = e.target.checked;
                           setProductForm({
                             ...productForm,
                             deliveryConfig: {
                               ...(productForm.deliveryConfig || {
-                                supportsExpress30Min: true,
                                 preparationMinutes: 15,
                                 standardDeliveryDays: 2,
                                 shippingFee: 25,
                                 freeShippingAbove: 499,
                                 returnPolicyDays: 7,
                                 serviceablePincodes: ['560001', '560038', '560103', '560068', '560034'],
+                                serviceCity: 'Bangalore',
+                                quickDeliveryCharge: 40,
+                                deliverySpeed: 'standard',
                               }),
-                              locationBasedSellingEnabled: e.target.checked,
+                              locationBasedSellingEnabled: isEnabled,
+                              supportsExpress30Min:
+                                isEnabled &&
+                                (productForm.deliveryConfig?.deliverySpeed === 'quick_30min' ||
+                                  productForm.deliveryConfig?.deliverySpeed === 'all'),
                             },
-                          })
-                        }
+                          });
+                        }}
                         className="sr-only peer"
                       />
                       <div className="w-9 h-5 bg-slate-300 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-amber-600"></div>
                     </label>
                   </div>
+
+                  {productForm.deliveryConfig?.locationBasedSellingEnabled !== true && (
+                    <div className="p-2 bg-slate-100 rounded-xl text-[11px] text-slate-600 flex items-center justify-between font-medium">
+                      <span>Status: Hyperlocal disabled — product will use standard delivery without 30-min badge.</span>
+                      <span className="text-[10px] bg-slate-200 px-2 py-0.5 rounded-full font-bold">Standard Tracked Only</span>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1">
                     <div>
@@ -1453,7 +1478,8 @@ export const SellerDashboard: React.FC = () => {
                             ...productForm,
                             deliveryConfig: {
                               ...(productForm.deliveryConfig || {
-                                supportsExpress30Min: true,
+                                supportsExpress30Min: false,
+                                locationBasedSellingEnabled: false,
                                 preparationMinutes: 15,
                                 standardDeliveryDays: 2,
                                 shippingFee: 25,
@@ -1476,6 +1502,7 @@ export const SellerDashboard: React.FC = () => {
                         value={productForm.deliveryConfig?.deliverySpeed || 'all'}
                         onChange={(e) => {
                           const val = e.target.value as any;
+                          const isLocEnabled = productForm.deliveryConfig?.locationBasedSellingEnabled === true;
                           setProductForm({
                             ...productForm,
                             deliveryConfig: {
@@ -1486,9 +1513,10 @@ export const SellerDashboard: React.FC = () => {
                                 freeShippingAbove: 499,
                                 returnPolicyDays: 7,
                                 serviceablePincodes: [],
+                                locationBasedSellingEnabled: false,
                               }),
                               deliverySpeed: val,
-                              supportsExpress30Min: val === 'quick_30min' || val === 'all',
+                              supportsExpress30Min: isLocEnabled && (val === 'quick_30min' || val === 'all'),
                             },
                           });
                         }}

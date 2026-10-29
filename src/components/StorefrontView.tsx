@@ -3,6 +3,7 @@ import { useApp } from '../context/AppContext.tsx';
 import { ProductCard } from './ProductCard.tsx';
 import { Product } from '../types/index.ts';
 import { api } from '../services/api.ts';
+import { isProductExpress30MinEligible } from '../utils/delivery.ts';
 import {
   Sparkles,
   PhoneCall,
@@ -61,7 +62,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
   const filteredProducts = products.filter((p) => {
     if (selectedBrand !== 'all' && p.brand !== selectedBrand) return false;
-    if (expressOnly && !p.deliveryConfig.supportsExpress30Min) return false;
+    if (expressOnly && !isProductExpress30MinEligible(p)) return false;
     return true;
   });
 

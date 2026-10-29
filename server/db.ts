@@ -81,11 +81,41 @@ class StoreDatabase {
           };
         });
 
+        // Ensure products have strict delivery eligibility and unit validation
+        const loadedProducts = (parsed.products || INITIAL_PRODUCTS).map((p: Product) => {
+          const config = p.deliveryConfig;
+          const isLocationEnabled = config?.locationBasedSellingEnabled === true;
+          const isExpress =
+            isLocationEnabled &&
+            config?.supportsExpress30Min === true &&
+            config?.deliverySpeed !== 'standard' &&
+            config?.deliverySpeed !== 'express_sameday';
+
+          return {
+            ...p,
+            minOrderQuantity: p.minOrderQuantity || 1,
+            sellingUnit: p.sellingUnit || 'piece',
+            deliveryConfig: {
+              supportsExpress30Min: isExpress,
+              preparationMinutes: config?.preparationMinutes || 15,
+              standardDeliveryDays: config?.standardDeliveryDays || 2,
+              shippingFee: config?.shippingFee ?? 25,
+              freeShippingAbove: config?.freeShippingAbove ?? 499,
+              returnPolicyDays: config?.returnPolicyDays ?? 7,
+              serviceablePincodes: config?.serviceablePincodes || ['560001', '560038', '560103', '560068', '560034'],
+              locationBasedSellingEnabled: isLocationEnabled,
+              serviceCity: config?.serviceCity || 'Bangalore',
+              deliverySpeed: config?.deliverySpeed || (isLocationEnabled ? 'all' : 'standard'),
+              quickDeliveryCharge: config?.quickDeliveryCharge ?? 40,
+            },
+          };
+        });
+
         // Ensure all collections exist
         return {
           categories: parsed.categories || INITIAL_CATEGORIES,
           users: loadedUsers,
-          products: parsed.products || INITIAL_PRODUCTS,
+          products: loadedProducts,
           documents: parsed.documents || INITIAL_DOCUMENTS,
           orders: parsed.orders || INITIAL_ORDERS,
           movements: parsed.movements || INITIAL_INVENTORY_MOVEMENTS,
@@ -325,6 +355,30 @@ class StoreDatabase {
     return this.data.products.find((p) => p.id === id || p.slug === id);
   }
 
+  public mergePersistentProducts(persistentProducts: Product[]) {
+    for (const p of persistentProducts) {
+      const idx = this.data.products.findIndex((it) => it.id === p.id);
+      if (idx >= 0) {
+        this.data.products[idx] = p;
+      } else {
+        this.data.products.unshift(p);
+      }
+    }
+    this.saveData();
+  }
+
+  public mergePersistentUsers(persistentUsers: User[]) {
+    for (const u of persistentUsers) {
+      const idx = this.data.users.findIndex((it) => it.id === u.id || it.email.toLowerCase() === u.email.toLowerCase());
+      if (idx >= 0) {
+        this.data.users[idx] = { ...this.data.users[idx], ...u };
+      } else {
+        this.data.users.push(u);
+      }
+    }
+    this.saveData();
+  }
+
   public createProduct(productData: Partial<Product>, seller: User): Product {
     const id = `prod-${crypto.randomUUID().slice(0, 8)}`;
     const now = new Date().toISOString();
@@ -369,14 +423,24 @@ class StoreDatabase {
       pdfExtractedText: productData.pdfExtractedText || '',
       lastVerifiedDate: productData.lastVerifiedDate || now.slice(0, 10),
       isVerifiedInfo: productData.isVerifiedInfo ?? !!productData.pdfExtractedText,
-      deliveryConfig: productData.deliveryConfig || {
-        supportsExpress30Min: productData.category === 'medicines-healthcare' || productData.category === 'food',
-        preparationMinutes: 15,
-        standardDeliveryDays: 2,
-        shippingFee: 25,
-        freeShippingAbove: 499,
-        returnPolicyDays: 7,
-        serviceablePincodes: ['*'],
+      minOrderQuantity: productData.minOrderQuantity || 1,
+      sellingUnit: productData.sellingUnit || 'piece',
+      deliveryConfig: {
+        supportsExpress30Min:
+          productData.deliveryConfig?.locationBasedSellingEnabled === true &&
+          productData.deliveryConfig?.supportsExpress30Min === true &&
+          productData.deliveryConfig?.deliverySpeed !== 'standard' &&
+          productData.deliveryConfig?.deliverySpeed !== 'express_sameday',
+        locationBasedSellingEnabled: productData.deliveryConfig?.locationBasedSellingEnabled === true,
+        deliverySpeed: productData.deliveryConfig?.deliverySpeed || (productData.deliveryConfig?.locationBasedSellingEnabled ? 'all' : 'standard'),
+        preparationMinutes: productData.deliveryConfig?.preparationMinutes || 15,
+        standardDeliveryDays: productData.deliveryConfig?.standardDeliveryDays || 2,
+        shippingFee: productData.deliveryConfig?.shippingFee ?? 25,
+        freeShippingAbove: productData.deliveryConfig?.freeShippingAbove ?? 499,
+        returnPolicyDays: productData.deliveryConfig?.returnPolicyDays ?? 7,
+        serviceablePincodes: productData.deliveryConfig?.serviceablePincodes || ['560001', '560038', '560103', '560068', '560034'],
+        serviceCity: productData.deliveryConfig?.serviceCity || 'Bangalore',
+        quickDeliveryCharge: productData.deliveryConfig?.quickDeliveryCharge ?? 40,
       },
       status: productData.status || 'published',
       rating: 5.0,
@@ -457,6 +521,22 @@ class StoreDatabase {
 
     if (updates.price !== undefined && updates.mrp !== undefined) {
       updates.discountPercent = Math.round(((updates.mrp - updates.price) / updates.mrp) * 100);
+    }
+
+    if (updates.deliveryConfig) {
+      const config = updates.deliveryConfig;
+      const isLocationEnabled = config.locationBasedSellingEnabled === true;
+      const isExpress =
+        isLocationEnabled &&
+        config.supportsExpress30Min === true &&
+        config.deliverySpeed !== 'standard' &&
+        config.deliverySpeed !== 'express_sameday';
+
+      updates.deliveryConfig = {
+        ...config,
+        locationBasedSellingEnabled: isLocationEnabled,
+        supportsExpress30Min: isExpress,
+      };
     }
 
     Object.assign(product, updates, { updatedAt: new Date().toISOString() });

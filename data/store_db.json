@@ -220,10 +220,80 @@
         }
       ],
       "id": "usr-501b2043",
-      "createdAt": "2026-10-28T14:22:09.176Z"
+      "createdAt": "2026-10-28T14:22:09.176Z",
+      "password": "Password@123",
+      "voiceProfile": {
+        "isEnrolled": true,
+        "voiceprintId": "VP-USR-501B2043",
+        "enrolledAt": "2026-01-01T00:00:00Z",
+        "confidence": 0.985
+      }
     }
   ],
   "products": [
+    {
+      "id": "prod-c276df8c",
+      "name": "Test Seller Product 1",
+      "kannadaName": "",
+      "slug": "test-seller-product-1",
+      "brand": "TrendVibe Central Hub & HealthMart",
+      "category": "medicines-healthcare",
+      "subcategory": "General",
+      "description": "",
+      "shortDescription": "",
+      "mrp": 100,
+      "price": 199,
+      "discountPercent": 0,
+      "costPrice": 139.29999999999998,
+      "sku": "SKU-943744",
+      "images": [
+        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"
+      ],
+      "variants": [],
+      "specifications": {},
+      "tags": [],
+      "stock": {
+        "onHand": 25,
+        "reserved": 0,
+        "available": 25,
+        "lowStockThreshold": 5
+      },
+      "sellerId": "usr-seller-1",
+      "sellerName": "TrendVibe Central Hub & HealthMart",
+      "instagramUrl": "",
+      "officialSourceUrl": "",
+      "pdfDocName": "",
+      "pdfDocUrl": "",
+      "pdfExtractedText": "",
+      "lastVerifiedDate": "2026-10-29",
+      "isVerifiedInfo": false,
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece",
+      "deliveryConfig": {
+        "supportsExpress30Min": false,
+        "locationBasedSellingEnabled": false,
+        "deliverySpeed": "standard",
+        "preparationMinutes": 15,
+        "standardDeliveryDays": 2,
+        "shippingFee": 25,
+        "freeShippingAbove": 499,
+        "returnPolicyDays": 7,
+        "serviceablePincodes": [
+          "560001",
+          "560038",
+          "560103",
+          "560068",
+          "560034"
+        ],
+        "serviceCity": "Bangalore",
+        "quickDeliveryCharge": 40
+      },
+      "status": "published",
+      "rating": 5,
+      "reviewCount": 1,
+      "createdAt": "2026-10-29T14:09:03.744Z",
+      "updatedAt": "2026-10-29T14:09:03.744Z"
+    },
     {
       "id": "prod-c4fa6f64",
       "name": "Organic Himalayan Ashwagandha Capsules",
@@ -261,7 +331,7 @@
       "lastVerifiedDate": "2026-10-27",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 15,
         "standardDeliveryDays": 2,
         "shippingFee": 25,
@@ -269,13 +339,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 5,
       "reviewCount": 1,
       "createdAt": "2026-10-27T15:12:38.970Z",
-      "updatedAt": "2026-10-27T15:12:38.970Z"
+      "updatedAt": "2026-10-27T15:12:38.970Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-dolo-650",
@@ -311,9 +387,9 @@
         "pain relief"
       ],
       "stock": {
-        "onHand": 150,
+        "onHand": 148,
         "reserved": 5,
-        "available": 145,
+        "available": 143,
         "lowStockThreshold": 20
       },
       "sellerId": "usr-seller-1",
@@ -323,7 +399,7 @@
       "lastVerifiedDate": "2026-03-01",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 5,
         "standardDeliveryDays": 1,
         "shippingFee": 25,
@@ -336,13 +412,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 420,
       "createdAt": "2026-01-15T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-calpol-500",
@@ -387,7 +469,7 @@
       "lastVerifiedDate": "2026-03-01",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 5,
         "standardDeliveryDays": 1,
         "shippingFee": 25,
@@ -400,13 +482,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 310,
       "createdAt": "2026-01-16T11:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-electral-ors",
@@ -452,7 +540,7 @@
       "lastVerifiedDate": "2026-03-01",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 5,
         "standardDeliveryDays": 1,
         "shippingFee": 25,
@@ -465,13 +553,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.9,
       "reviewCount": 540,
       "createdAt": "2026-01-16T12:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-moov-cream",
@@ -517,7 +611,7 @@
       "lastVerifiedDate": "2026-03-01",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 5,
         "standardDeliveryDays": 1,
         "shippingFee": 25,
@@ -530,13 +624,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.6,
       "reviewCount": 280,
       "createdAt": "2026-01-17T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-moov-spray",
@@ -580,7 +680,7 @@
       "lastVerifiedDate": "2026-03-01",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 5,
         "standardDeliveryDays": 1,
         "shippingFee": 25,
@@ -593,13 +693,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 195,
       "createdAt": "2026-01-17T11:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-menthoplus-balm",
@@ -644,7 +750,7 @@
       "lastVerifiedDate": "2026-03-01",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 5,
         "standardDeliveryDays": 1,
         "shippingFee": 25,
@@ -657,13 +763,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.5,
       "reviewCount": 160,
       "createdAt": "2026-01-18T09:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-ragi-idli",
@@ -712,9 +824,9 @@
       "lastVerifiedDate": "2026-03-15",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 15,
-        "standardDeliveryDays": 0,
+        "standardDeliveryDays": 2,
         "shippingFee": 30,
         "freeShippingAbove": 249,
         "returnPolicyDays": 0,
@@ -725,13 +837,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.9,
       "reviewCount": 380,
       "createdAt": "2026-02-01T07:00:00Z",
-      "updatedAt": "2026-03-15T08:00:00Z"
+      "updatedAt": "2026-03-15T08:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-veg-idli",
@@ -776,9 +894,9 @@
       "lastVerifiedDate": "2026-03-15",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 15,
-        "standardDeliveryDays": 0,
+        "standardDeliveryDays": 2,
         "shippingFee": 30,
         "freeShippingAbove": 249,
         "returnPolicyDays": 0,
@@ -789,13 +907,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 290,
       "createdAt": "2026-02-01T07:15:00Z",
-      "updatedAt": "2026-03-15T08:00:00Z"
+      "updatedAt": "2026-03-15T08:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-protein-ladoo",
@@ -841,9 +965,9 @@
       "lastVerifiedDate": "2026-03-15",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 10,
-        "standardDeliveryDays": 0,
+        "standardDeliveryDays": 2,
         "shippingFee": 30,
         "freeShippingAbove": 249,
         "returnPolicyDays": 0,
@@ -854,13 +978,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.9,
       "reviewCount": 410,
       "createdAt": "2026-02-02T08:00:00Z",
-      "updatedAt": "2026-03-15T08:00:00Z"
+      "updatedAt": "2026-03-15T08:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-oats-pancake",
@@ -905,9 +1035,9 @@
       "lastVerifiedDate": "2026-03-15",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 20,
-        "standardDeliveryDays": 0,
+        "standardDeliveryDays": 2,
         "shippingFee": 30,
         "freeShippingAbove": 249,
         "returnPolicyDays": 0,
@@ -918,13 +1048,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 220,
       "createdAt": "2026-02-03T09:00:00Z",
-      "updatedAt": "2026-03-15T08:00:00Z"
+      "updatedAt": "2026-03-15T08:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-peanut-smoothie",
@@ -969,9 +1105,9 @@
       "lastVerifiedDate": "2026-03-15",
       "isVerifiedInfo": true,
       "deliveryConfig": {
-        "supportsExpress30Min": true,
+        "supportsExpress30Min": false,
         "preparationMinutes": 10,
-        "standardDeliveryDays": 0,
+        "standardDeliveryDays": 2,
         "shippingFee": 30,
         "freeShippingAbove": 249,
         "returnPolicyDays": 0,
@@ -982,13 +1118,19 @@
           "560068",
           "560034",
           "560008"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.9,
       "reviewCount": 340,
       "createdAt": "2026-02-04T10:00:00Z",
-      "updatedAt": "2026-03-15T08:00:00Z"
+      "updatedAt": "2026-03-15T08:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-iphone-16",
@@ -1072,13 +1214,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.9,
       "reviewCount": 520,
       "createdAt": "2026-01-20T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-samsung-s25",
@@ -1132,13 +1280,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 390,
       "createdAt": "2026-01-22T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-pixel-9a",
@@ -1192,13 +1346,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 280,
       "createdAt": "2026-01-25T12:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-oneplus-13",
@@ -1250,13 +1410,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 310,
       "createdAt": "2026-01-26T14:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-asus-tuf-f15",
@@ -1312,13 +1478,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 380,
       "createdAt": "2026-01-18T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-asus-vivobook-15",
@@ -1372,13 +1544,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.6,
       "reviewCount": 245,
       "createdAt": "2026-01-19T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-dell-inspiron-15",
@@ -1431,13 +1609,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 310,
       "createdAt": "2026-01-21T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-lenovo-ideapad-slim-3",
@@ -1491,13 +1675,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 290,
       "createdAt": "2026-01-23T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-minimalist-niacinamide",
@@ -1551,13 +1741,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 420,
       "createdAt": "2026-01-28T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-cetaphil-cleanser",
@@ -1609,13 +1805,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.9,
       "reviewCount": 610,
       "createdAt": "2026-01-29T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-dot-key-sunscreen",
@@ -1668,13 +1870,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 350,
       "createdAt": "2026-01-30T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-maybelline-lipstick",
@@ -1728,13 +1936,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.6,
       "reviewCount": 480,
       "createdAt": "2026-01-31T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-nike-air-max-sc",
@@ -1827,13 +2041,19 @@
         "returnPolicyDays": 14,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 390,
       "createdAt": "2026-02-05T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-adidas-ultraboost",
@@ -1886,13 +2106,19 @@
         "returnPolicyDays": 14,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.9,
       "reviewCount": 310,
       "createdAt": "2026-02-06T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-puma-softride-pro",
@@ -1944,13 +2170,19 @@
         "returnPolicyDays": 14,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.6,
       "reviewCount": 220,
       "createdAt": "2026-02-07T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-woodland-leather-loafers",
@@ -2003,13 +2235,19 @@
         "returnPolicyDays": 14,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 260,
       "createdAt": "2026-02-08T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-raymond-cotton-shirt",
@@ -2099,13 +2337,19 @@
         "returnPolicyDays": 15,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 310,
       "createdAt": "2026-02-09T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-levis-511-jeans",
@@ -2184,13 +2428,19 @@
         "returnPolicyDays": 15,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 420,
       "createdAt": "2026-02-10T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-fabindia-kurta",
@@ -2243,13 +2493,19 @@
         "returnPolicyDays": 15,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 230,
       "createdAt": "2026-02-11T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-zara-bomber-jacket",
@@ -2302,13 +2558,19 @@
         "returnPolicyDays": 15,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 180,
       "createdAt": "2026-02-12T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-boat-airdopes-141",
@@ -2363,13 +2625,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 780,
       "createdAt": "2026-02-13T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-milton-thermosteel",
@@ -2422,13 +2690,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 460,
       "createdAt": "2026-02-14T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-portronics-65w-gan",
@@ -2481,13 +2755,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.8,
       "reviewCount": 330,
       "createdAt": "2026-02-15T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     },
     {
       "id": "prod-solimo-cushion",
@@ -2540,13 +2820,19 @@
         "returnPolicyDays": 7,
         "serviceablePincodes": [
           "*"
-        ]
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
       },
       "status": "published",
       "rating": 4.7,
       "reviewCount": 290,
       "createdAt": "2026-02-16T10:00:00Z",
-      "updatedAt": "2026-03-10T12:00:00Z"
+      "updatedAt": "2026-03-10T12:00:00Z",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece"
     }
   ],
   "documents": [
@@ -2663,6 +2949,57 @@
     }
   ],
   "orders": [
+    {
+      "id": "ord-47eb2e56",
+      "orderNumber": "TV-2026-1062",
+      "customerId": "usr-customer-1",
+      "customerName": "Chandan Kumar",
+      "customerEmail": "chandanchanduchandan9@gmail.com",
+      "customerPhone": "9845012345",
+      "shippingAddress": {
+        "name": "Chandan",
+        "phone": "9845012345",
+        "street": "MG Road",
+        "city": "Bangalore",
+        "pincode": "560001"
+      },
+      "items": [
+        {
+          "productId": "prod-dolo-650",
+          "productName": "Dolo 650 Tablet (Paracetamol 650mg)",
+          "sku": "MED-DOLO-650-15T",
+          "price": 30,
+          "mrp": 34,
+          "quantity": 2,
+          "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
+          "category": "medicines-healthcare",
+          "sellerId": "usr-seller-1",
+          "sellerName": "TrendVibe Central Hub & HealthMart"
+        }
+      ],
+      "subtotal": 60,
+      "discount": 0,
+      "tax": 3,
+      "shippingFee": 25,
+      "totalAmount": 88,
+      "paymentMethod": "ONLINE_RAZORPAY",
+      "paymentStatus": "PAID",
+      "paymentId": "pay_rzp_fb34c297-8",
+      "orderStatus": "ORDER_PLACED",
+      "isExpress30Min": false,
+      "estimatedDeliveryTime": "Tomorrow, by 8:00 PM",
+      "aiAssisted": false,
+      "timeline": [
+        {
+          "status": "ORDER_PLACED",
+          "timestamp": "2026-10-29T13:54:55.263Z",
+          "note": "Order placed successfully by customer",
+          "actor": "Chandan Kumar"
+        }
+      ],
+      "createdAt": "2026-10-29T13:54:55.263Z",
+      "updatedAt": "2026-10-29T13:54:55.263Z"
+    },
     {
       "id": "ord-tv-8841",
       "orderNumber": "TV-2026-8841",
@@ -2911,6 +3248,33 @@
       "note": "Product created with initial stock",
       "id": "mov-27984e6c",
       "timestamp": "2026-10-27T15:12:38.971Z"
+    },
+    {
+      "productId": "prod-dolo-650",
+      "productName": "Dolo 650 Tablet (Paracetamol 650mg)",
+      "sku": "MED-DOLO-650-15T",
+      "type": "ORDER_COMMITTED",
+      "delta": -2,
+      "previousAvailable": 145,
+      "newAvailable": 143,
+      "actor": "Order Checkout",
+      "orderId": "ord-47eb2e56",
+      "note": "Committed 2 units for Order #TV-2026-1062",
+      "id": "mov-8c1a2f48",
+      "timestamp": "2026-10-29T13:54:55.263Z"
+    },
+    {
+      "productId": "prod-c276df8c",
+      "productName": "Test Seller Product 1",
+      "sku": "SKU-943744",
+      "type": "INITIAL_STOCK",
+      "delta": 25,
+      "previousAvailable": 0,
+      "newAvailable": 25,
+      "actor": "Priya Sharma",
+      "note": "Product created with initial stock",
+      "id": "mov-d3a12d1e",
+      "timestamp": "2026-10-29T14:09:03.744Z"
     }
   ],
   "enquiries": [
@@ -3005,6 +3369,17 @@
       "category": "medicines-healthcare",
       "sellerId": "usr-seller-1",
       "timestamp": "2026-10-18T10:15:00Z"
+    },
+    {
+      "eventType": "ORDER_PLACED",
+      "sellerId": "usr-seller-1",
+      "metadata": {
+        "orderId": "ord-47eb2e56",
+        "totalAmount": 88,
+        "itemsCount": 1
+      },
+      "id": "ev-93466137",
+      "timestamp": "2026-10-29T13:54:55.263Z"
     }
   ],
   "priceAlerts": [

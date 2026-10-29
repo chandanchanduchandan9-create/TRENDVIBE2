@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Product } from '../types/index.ts';
 import { useApp } from '../context/AppContext.tsx';
+import { isProductExpress30MinEligible } from '../utils/delivery.ts';
 import {
   Sparkles,
   ShoppingBag,
@@ -86,7 +87,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
         )}
 
         {/* 30-Min Express Badge */}
-        {product.deliveryConfig.supportsExpress30Min && (
+        {isProductExpress30MinEligible(product) && (
           <div className="absolute top-2.5 right-2.5 bg-emerald-600 text-white font-bold text-[10px] px-2 py-0.5 rounded-full shadow-sm flex items-center gap-1 border border-emerald-400/40">
             <Zap className="w-2.5 h-2.5 text-amber-300 fill-amber-300" />
             <span>30-Min Express</span>

@@ -6,10 +6,21 @@ import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { db } from './server/db.ts';
 import { processZyroConversation } from './server/zyroAi.ts';
-import { checkSupabaseStatus, syncDataToSupabase } from './server/supabase.ts';
+import {
+  checkSupabaseStatus,
+  syncDataToSupabase,
+  upsertProductInSupabase,
+  deleteProductInSupabase,
+} from './server/supabase.ts';
+import { isProductExpress30MinEligible } from './server/delivery.ts';
+import { razorpayService } from './server/razorpay.ts';
+import { deepgramService } from './server/deepgram.ts';
+import { mongoService } from './server/mongodb.ts';
+import { elevenLabsService } from './server/elevenlabs.ts';
+import { twilioService } from './server/twilio.ts';
 import { User, OrderStatus } from './src/types/index.ts';
 
-dotenv.config();
+dotenv.config({ override: true });
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -17,9 +28,10 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// Body parser supporting JSON and base64 document payloads
+// Body parser supporting JSON, raw audio streams, and base64 document payloads
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
+app.use(express.raw({ type: ['audio/*', 'application/octet-stream'], limit: '50mb' }));
 
 // Helper to authenticate user from Authorization header (mock bearer token: `Bearer usr-xxx`)
 function getAuthUser(req: express.Request): User | undefined {
@@ -53,6 +65,9 @@ app.post('/api/auth/login', (req, res) => {
     return res.status(401).json({ error: result.error || 'Authentication failed. Please verify your credentials.' });
   }
 
+  // Securely persist login timestamp and profile to MongoDB
+  mongoService.upsertUser(result.user).catch(() => {});
+
   return res.json({
     user: result.user,
     token: result.user.id,
@@ -77,11 +92,15 @@ app.post('/api/auth/voice-profile', (req, res) => {
     },
   });
 
+  if (updated) {
+    mongoService.upsertUser(updated).catch(() => {});
+  }
+
   return res.json({ user: updated, success: true });
 });
 
 app.post('/api/auth/register', (req, res) => {
-  const { name, email, phone, role, storeName, storeDescription } = req.body;
+  const { name, email, phone, password, role, storeName, storeDescription } = req.body;
   if (!name || !email || !phone) {
     return res.status(400).json({ error: 'Name, email, and phone are required' });
   }
@@ -98,6 +117,7 @@ app.post('/api/auth/register', (req, res) => {
     name,
     email,
     phone,
+    password: password || 'Password@123',
     role: assignedRole,
     storeName: assignedRole === 'seller' ? storeName || `${name}'s Store` : undefined,
     storeDescription: assignedRole === 'seller' ? storeDescription || 'Quality multi-category seller.' : undefined,
@@ -117,6 +137,9 @@ app.post('/api/auth/register', (req, res) => {
       },
     ],
   });
+
+  // Securely persist new customer / seller user to MongoDB
+  mongoService.upsertUser(newUser).catch((err) => console.warn('[MongoDB] User sync note:', err.message));
 
   return res.status(201).json({ user: newUser, token: newUser.id });
 });
@@ -168,7 +191,7 @@ app.get('/api/products/:id', (req, res) => {
   res.json(product);
 });
 
-app.post('/api/products', (req, res) => {
+app.post('/api/products', async (req, res) => {
   let user = getAuthUser(req);
   if (!user) {
     user = db.getUserById('usr-seller-1');
@@ -182,15 +205,39 @@ app.post('/api/products', (req, res) => {
     return res.status(403).json({ error: 'Unauthorized: Seller account required' });
   }
 
+  const { name, price, stock, minOrderQuantity } = req.body;
+  if (!name || !name.trim()) {
+    return res.status(400).json({ error: 'Product title is required' });
+  }
+  if (price === undefined || Number(price) <= 0) {
+    return res.status(400).json({ error: 'Valid selling price (₹) is required' });
+  }
+  if (stock?.onHand !== undefined && Number(stock.onHand) < 0) {
+    return res.status(400).json({ error: 'Stock on hand cannot be negative' });
+  }
+  if (minOrderQuantity !== undefined && Number(minOrderQuantity) < 1) {
+    return res.status(400).json({ error: 'Minimum order quantity must be at least 1' });
+  }
+
   try {
     const created = db.createProduct(req.body, user);
+
+    // Save to MongoDB if connected
+    mongoService.upsertProduct(created).catch((err) => console.warn('[MongoDB] Sync note:', err.message));
+
+    // Save synchronously to Supabase
+    const supaRes = await upsertProductInSupabase(created);
+    if (!supaRes.success) {
+      console.warn(`Product ${created.id} saved to primary store DB. Supabase sync note: ${supaRes.error}`);
+    }
+
     res.status(201).json(created);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
-app.put('/api/products/:id', (req, res) => {
+app.put('/api/products/:id', async (req, res) => {
   const user = getAuthUser(req);
   if (!user || (user.role !== 'seller' && user.role !== 'admin')) {
     return res.status(403).json({ error: 'Unauthorized: Only seller or admin can update product' });
@@ -201,13 +248,23 @@ app.put('/api/products/:id', (req, res) => {
     if (!updated) {
       return res.status(404).json({ error: 'Product not found' });
     }
+
+    // Update in MongoDB
+    mongoService.upsertProduct(updated).catch((err) => console.warn('[MongoDB] Update note:', err.message));
+
+    // Update in Supabase
+    const supaRes = await upsertProductInSupabase(updated);
+    if (!supaRes.success) {
+      console.warn(`Product ${updated.id} updated in store DB. Supabase note: ${supaRes.error}`);
+    }
+
     res.json(updated);
   } catch (err: any) {
     res.status(400).json({ error: err.message });
   }
 });
 
-app.delete('/api/products/:id', (req, res) => {
+app.delete('/api/products/:id', async (req, res) => {
   const user = getAuthUser(req);
   if (!user || (user.role !== 'seller' && user.role !== 'admin')) {
     return res.status(403).json({ error: 'Unauthorized' });
@@ -217,7 +274,14 @@ app.delete('/api/products/:id', (req, res) => {
   if (!success) {
     return res.status(404).json({ error: 'Product not found' });
   }
-  res.json({ success: true, message: 'Product deleted' });
+
+  // Delete in MongoDB
+  mongoService.deleteProduct(req.params.id).catch((err) => console.warn('[MongoDB] Delete note:', err.message));
+
+  // Delete in Supabase
+  await deleteProductInSupabase(req.params.id);
+
+  res.json({ success: true, message: 'Product deleted successfully from store, MongoDB & Supabase' });
 });
 
 // ==========================================
@@ -277,6 +341,22 @@ app.post('/api/orders/checkout', (req, res) => {
 
   if (!shippingAddress || !shippingAddress.pincode) {
     return res.status(400).json({ error: 'Valid delivery address and PIN code are required' });
+  }
+
+  // Authoritative server-side express delivery validation
+  if (isExpress30Min) {
+    for (const it of items) {
+      const product = db.getProductById(it.productId);
+      if (!product) {
+        return res.status(400).json({ error: `Product ID "${it.productId}" does not exist in store catalogue.` });
+      }
+      const isEligible = isProductExpress30MinEligible(product, shippingAddress.pincode);
+      if (!isEligible) {
+        return res.status(400).json({
+          error: `30-Minute Express Delivery is not available for "${product.name}" to PIN code ${shippingAddress.pincode}. Hyperlocal delivery is disabled by the seller or outside the serviceable coverage area. Please choose standard delivery.`,
+        });
+      }
+    }
   }
 
   try {
@@ -458,7 +538,106 @@ app.post('/api/zyro-ai/chat', async (req, res) => {
   }
 });
 
-// Simulated payment verification
+// ==========================================
+// RAZORPAY PAYMENT GATEWAY ROUTES
+// ==========================================
+
+app.get('/api/razorpay/config', (_req, res) => {
+  res.json({
+    keyId: razorpayService.getKeyId(),
+    isConfigured: razorpayService.isConfigured(),
+  });
+});
+
+app.post('/api/razorpay/create-order', async (req, res) => {
+  const { orderId, amount } = req.body;
+  if (!orderId || typeof amount !== 'number') {
+    return res.status(400).json({ error: 'orderId and valid amount are required' });
+  }
+
+  const existingOrder = db.getOrderById(orderId);
+  if (!existingOrder) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  try {
+    const { order: rzpOrder, activeKeyId } = await razorpayService.createOrder({
+      amount,
+      receipt: `rcpt_${orderId.slice(-8)}_${Date.now().toString().slice(-4)}`,
+      notes: {
+        storeOrderId: orderId,
+        customerName: existingOrder.customerName,
+        customerEmail: existingOrder.customerEmail,
+      },
+    });
+
+    // Store Razorpay order ID on the existing order
+    existingOrder.razorpayOrderId = rzpOrder.id;
+
+    res.json({
+      success: true,
+      razorpayOrderId: rzpOrder.id,
+      amount: rzpOrder.amount, // in paise
+      currency: rzpOrder.currency,
+      keyId: activeKeyId,
+    });
+  } catch (err: any) {
+    console.error('Error creating Razorpay order:', err);
+    res.status(500).json({ error: err.message || 'Failed to create Razorpay order' });
+  }
+});
+
+app.post('/api/razorpay/verify-payment', (req, res) => {
+  const { orderId, razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.body;
+
+  if (!orderId || !razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
+    return res.status(400).json({
+      error: 'orderId, razorpay_order_id, razorpay_payment_id, and razorpay_signature are required',
+    });
+  }
+
+  const order = db.getOrderById(orderId);
+  if (!order) {
+    return res.status(404).json({ error: 'Order not found' });
+  }
+
+  const isValid = razorpayService.verifySignature(
+    razorpay_order_id,
+    razorpay_payment_id,
+    razorpay_signature
+  );
+
+  if (!isValid) {
+    order.paymentStatus = 'FAILED';
+    order.timeline.push({
+      status: order.orderStatus,
+      timestamp: new Date().toISOString(),
+      note: `Online payment verification failed: Invalid HMAC-SHA256 signature for Payment Ref ${razorpay_payment_id}`,
+      actor: 'Razorpay Verification Security',
+    });
+    return res.status(400).json({ error: 'Cryptographic signature verification failed: payment untrusted' });
+  }
+
+  // Update order to PAID
+  order.paymentStatus = 'PAID';
+  order.paymentId = razorpay_payment_id;
+  order.razorpayOrderId = razorpay_order_id;
+  order.razorpaySignature = razorpay_signature;
+  order.timeline.push({
+    status: order.orderStatus,
+    timestamp: new Date().toISOString(),
+    note: `Online payment of ₹${order.totalAmount} successfully verified via Razorpay (Payment ID: ${razorpay_payment_id}, Order ID: ${razorpay_order_id})`,
+    actor: 'Razorpay Payment Gateway',
+  });
+
+  res.json({
+    success: true,
+    message: 'Payment verified and confirmed successfully!',
+    order,
+  });
+});
+
+// Legacy simulated payment verification
 app.post('/api/payments/verify', (req, res) => {
   const { paymentId, orderId } = req.body;
   if (!paymentId || !orderId) {
@@ -585,10 +764,297 @@ app.post('/api/supabase/sync', async (_req, res) => {
 });
 
 // ==========================================
+// DEEPGRAM HIGH-ACCURACY SPEECH-TO-TEXT ROUTE
+// ==========================================
+
+app.post('/api/deepgram/transcribe', async (req, res) => {
+  try {
+    let audioBuffer: Buffer | null = null;
+    let mimeType = 'audio/webm';
+    let language: 'en' | 'kn' | 'auto' = 'auto';
+
+    if (req.body && req.body.audioBase64) {
+      audioBuffer = Buffer.from(req.body.audioBase64, 'base64');
+      if (req.body.mimeType) mimeType = req.body.mimeType;
+      if (req.body.language) language = req.body.language;
+    } else if (Buffer.isBuffer(req.body)) {
+      audioBuffer = req.body;
+      const cType = req.headers['content-type'];
+      if (cType) mimeType = cType.split(';')[0];
+      if (req.query.language) language = req.query.language as any;
+    }
+
+    if (!audioBuffer || audioBuffer.length < 50) {
+      return res.status(400).json({ error: 'Valid audio buffer is required' });
+    }
+
+    const result = await deepgramService.transcribeAudio(audioBuffer, mimeType, language);
+    res.json({
+      success: true,
+      transcript: result.transcript,
+      confidence: result.confidence,
+      detectedLanguage: result.detectedLanguage,
+      duration: result.duration,
+    });
+  } catch (err: any) {
+    console.error('[Deepgram] Speech recognition error:', err.message);
+    res.status(500).json({ error: err.message || 'Speech recognition failed' });
+  }
+});
+
+// ==========================================
+// MONGODB COMPASS PERSISTENT DATABASE ROUTES
+// ==========================================
+
+app.get('/api/mongodb/status', async (_req, res) => {
+  const status = await mongoService.getDetailedStatus();
+  res.json(status);
+});
+
+app.post('/api/mongodb/connect', async (req, res) => {
+  const { uri, dbName } = req.body;
+  if (uri) process.env.MONGODB_URI = uri;
+  if (dbName) process.env.MONGODB_DB_NAME = dbName;
+  const connected = await mongoService.init();
+  if (connected) {
+    const products = await mongoService.getAllProducts();
+    if (products.length > 0) {
+      db.mergePersistentProducts(products);
+    }
+  }
+  const status = await mongoService.getDetailedStatus();
+  res.json({ success: connected, status });
+});
+
+app.post('/api/mongodb/sync', async (_req, res) => {
+  const products = db.getProducts({ status: 'all' });
+  const users = db.getUsers();
+  const [pCount, uCount] = await Promise.all([
+    mongoService.syncAllProducts(products),
+    mongoService.syncAllUsers(users),
+  ]);
+  res.json({
+    success: true,
+    count: pCount + uCount,
+    message: `Synced ${pCount} products and ${uCount} users into MongoDB Compass!`,
+  });
+});
+
+// ==========================================
+// ELEVENLABS NATURAL VOICE AI ROUTES
+// ==========================================
+
+app.get('/api/elevenlabs/config', (_req, res) => {
+  res.json({
+    isConfigured: elevenLabsService.isConfigured(),
+    defaultVoiceId: elevenLabsService.getDefaultVoiceId(),
+  });
+});
+
+app.post('/api/elevenlabs/config', (req, res) => {
+  const { apiKey, defaultVoiceId } = req.body;
+  if (apiKey !== undefined) {
+    elevenLabsService.setApiKey(apiKey);
+    process.env.ELEVENLABS_API_KEY = apiKey;
+  }
+  if (defaultVoiceId) {
+    elevenLabsService.setDefaultVoiceId(defaultVoiceId);
+  }
+  res.json({
+    success: true,
+    isConfigured: elevenLabsService.isConfigured(),
+    defaultVoiceId: elevenLabsService.getDefaultVoiceId(),
+  });
+});
+
+app.get('/api/elevenlabs/voices', async (_req, res) => {
+  const voices = await elevenLabsService.getVoices();
+  res.json(voices);
+});
+
+app.post('/api/elevenlabs/synthesize', async (req, res) => {
+  const { text, voiceId } = req.body;
+  if (!text || !text.trim()) {
+    return res.status(400).json({ error: 'Text to synthesize is required' });
+  }
+
+  try {
+    const { audioBuffer, mimeType, audioId } = await elevenLabsService.synthesize(text, voiceId);
+    const audioBase64 = audioBuffer.toString('base64');
+    res.json({
+      success: true,
+      audioId,
+      audioUrl: `/api/elevenlabs/audio/${audioId}.mp3`,
+      audioBase64,
+      mimeType,
+    });
+  } catch (err: any) {
+    console.warn('[ElevenLabs] Synthesize note:', err.message);
+    res.status(500).json({ error: err.message || 'Speech synthesis failed' });
+  }
+});
+
+app.get('/api/elevenlabs/audio/:audioId.mp3', (req, res) => {
+  const cached = elevenLabsService.getCachedAudio(req.params.audioId);
+  if (!cached) {
+    return res.status(404).send('Audio not found or expired');
+  }
+  res.setHeader('Content-Type', cached.mimeType);
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(cached.buffer);
+});
+
+// ==========================================
+// TWILIO TELEPHONY & INBOUND VOICE CALL ROUTES
+// ==========================================
+
+app.get('/api/twilio/config', (req, res) => {
+  const host = req.headers.host;
+  const config = twilioService.getConfig(host);
+  res.json(config);
+});
+
+app.post('/api/twilio/config', (req, res) => {
+  const { accountSid, authToken, phoneNumber } = req.body;
+  twilioService.updateCredentials(accountSid, authToken, phoneNumber);
+  if (accountSid) process.env.TWILIO_ACCOUNT_SID = accountSid;
+  if (authToken) process.env.TWILIO_AUTH_TOKEN = authToken;
+  if (phoneNumber) process.env.TWILIO_PHONE_NUMBER = phoneNumber;
+  const config = twilioService.getConfig(req.headers.host);
+  res.json({ success: true, config });
+});
+
+app.get('/api/twilio/calls', async (_req, res) => {
+  const calls = await twilioService.getCallHistory();
+  res.json(calls);
+});
+
+// Inbound phone call webhook called by Twilio
+app.post('/api/twilio/voice/inbound', async (req, res) => {
+  const callSid = req.body.CallSid || `CALL-${Date.now()}`;
+  const from = req.body.From || req.query.From || '+91 98450 12345';
+  const to = req.body.To || req.query.To || '+1 800-TRENDVIBE';
+  const host = req.headers.host;
+
+  console.log(`[Twilio] Inbound Voice Call received from ${from} (CallSid: ${callSid})`);
+
+  const twiml = await twilioService.handleInboundCall({
+    callSid,
+    from: String(from),
+    to: String(to),
+    hostHeader: host,
+  });
+
+  res.setHeader('Content-Type', 'text/xml');
+  res.send(twiml);
+});
+
+// Twilio Gather webhook after caller speaks
+app.post('/api/twilio/voice/gather', async (req, res) => {
+  const callSid = req.body.CallSid || `CALL-${Date.now()}`;
+  const speechResult = req.body.SpeechResult || req.body.speechResult || '';
+  const confidence = req.body.Confidence ? parseFloat(req.body.Confidence) : undefined;
+  const from = req.body.From || '+91 98450 12345';
+  const host = req.headers.host;
+
+  console.log(`[Twilio] Caller speech received: "${speechResult}" (Confidence: ${confidence})`);
+
+  const twiml = await twilioService.handleGatherSpeech({
+    callSid,
+    speechResult: String(speechResult),
+    confidence,
+    from: String(from),
+    hostHeader: host,
+  });
+
+  res.setHeader('Content-Type', 'text/xml');
+  res.send(twiml);
+});
+
+// Twilio Call Status Callback
+app.post('/api/twilio/voice/status', (req, res) => {
+  const callSid = req.body.CallSid;
+  const duration = req.body.CallDuration ? parseInt(req.body.CallDuration, 10) : undefined;
+  if (callSid) {
+    twilioService.handleStatusCallback(callSid, duration);
+  }
+  res.sendStatus(200);
+});
+
+// Virtual Inbound Call Simulator for UI testing
+app.post('/api/twilio/voice/simulate', async (req, res) => {
+  const { action, callSid, from, speechInput } = req.body;
+  const host = req.headers.host;
+  const activeSid = callSid || `SIM-${Date.now()}`;
+  const callerNumber = from || '+91 98450 12345';
+
+  try {
+    if (action === 'start') {
+      const twiml = await twilioService.handleInboundCall({
+        callSid: activeSid,
+        from: callerNumber,
+        to: '+1 800-TRENDVIBE',
+        hostHeader: host,
+      });
+      return res.json({
+        success: true,
+        callSid: activeSid,
+        twiml,
+        message: 'Inbound call connected to Zyro AI',
+      });
+    } else {
+      const twiml = await twilioService.handleGatherSpeech({
+        callSid: activeSid,
+        speechResult: speechInput || 'Tell me about Dolo 650',
+        from: callerNumber,
+        hostHeader: host,
+      });
+      return res.json({
+        success: true,
+        callSid: activeSid,
+        twiml,
+      });
+    }
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ==========================================
 // VITE MIDDLEWARE & STATIC ASSET SERVING
 // ==========================================
 
 async function startServer() {
+  // Initialize MongoDB connection on server startup
+  try {
+    const isMongoConnected = await mongoService.init();
+    if (isMongoConnected) {
+      // 1. Sync & Restore Products
+      const savedProducts = await mongoService.getAllProducts();
+      if (savedProducts.length > 0) {
+        db.mergePersistentProducts(savedProducts);
+        console.log(`[MongoDB] Loaded ${savedProducts.length} persistent products from MongoDB!`);
+      } else {
+        const currentProducts = db.getProducts({ status: 'all' });
+        await mongoService.syncAllProducts(currentProducts);
+        console.log(`[MongoDB] Initialized collection with ${currentProducts.length} store products.`);
+      }
+
+      // 2. Sync & Restore Users
+      const savedUsers = await mongoService.getAllUsers();
+      if (savedUsers.length > 0) {
+        db.mergePersistentUsers(savedUsers);
+        console.log(`[MongoDB] Loaded ${savedUsers.length} persistent users from MongoDB!`);
+      } else {
+        const currentUsers = db.getUsers();
+        await mongoService.syncAllUsers(currentUsers);
+        console.log(`[MongoDB] Initialized collection with ${currentUsers.length} users.`);
+      }
+    }
+  } catch (mErr: any) {
+    console.warn('[MongoDB] Startup notice:', mErr.message);
+  }
+
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
       server: { middlewareMode: true },

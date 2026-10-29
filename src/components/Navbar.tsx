@@ -278,56 +278,46 @@ export const Navbar: React.FC<NavbarProps> = ({
                     </div>
                   </div>
 
-                  {/* Switch Persona */}
-                  <div className="px-4 pt-2 pb-1">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">
-                      Quick Demo Personas
-                    </p>
-                  </div>
-                  <div className="py-1">
-                    {availableUsers.map((u) => {
-                      const isActive = user?.id === u.id;
-                      return (
-                        <button
-                          key={u.id}
-                          onClick={() => {
-                            switchPersona(u.id);
-                            setShowPersonaDropdown(false);
-                          }}
-                          className={`w-full px-4 py-2 flex items-center justify-between text-left hover:bg-slate-50 transition-colors cursor-pointer ${
-                            isActive ? 'bg-indigo-50/70' : ''
-                          }`}
-                        >
-                          <div className="flex items-center gap-2.5">
-                            <img
-                              src={u.avatarUrl || 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=100'}
-                              alt={u.name}
-                              className="w-7 h-7 rounded-full object-cover border border-slate-200"
-                            />
-                            <div>
-                              <div className="text-xs font-bold text-slate-900">{u.name}</div>
-                              <div className="text-[10px] text-slate-500 capitalize flex items-center gap-1">
-                                <span
-                                  className={`inline-block w-1.5 h-1.5 rounded-full ${
-                                    u.role === 'seller'
-                                      ? 'bg-amber-500'
-                                      : u.role === 'admin'
-                                      ? 'bg-purple-500'
-                                      : 'bg-emerald-500'
-                                  }`}
-                                />
-                                {u.role === 'seller'
-                                  ? 'Verified Seller'
-                                  : u.role === 'admin'
-                                  ? 'Platform Admin'
-                                  : 'Customer'}
-                              </div>
-                            </div>
-                          </div>
-                          {isActive && <CheckCircle2 className="w-4 h-4 text-indigo-600" />}
-                        </button>
-                      );
-                    })}
+                  {/* Account Shortcuts */}
+                  <div className="py-1 px-2 space-y-1">
+                    {user?.role === 'customer' && (
+                      <button
+                        onClick={() => {
+                          setActiveTab('customer-orders');
+                          setShowPersonaDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <UserIcon className="w-3.5 h-3.5 text-indigo-600" />
+                        <span>My Orders & Profile</span>
+                      </button>
+                    )}
+
+                    {(user?.role === 'seller' || user?.role === 'admin') && (
+                      <button
+                        onClick={() => {
+                          setActiveTab('seller-dashboard');
+                          setShowPersonaDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-amber-50 text-amber-900 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Store className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Seller Dashboard</span>
+                      </button>
+                    )}
+
+                    {user?.role === 'admin' && (
+                      <button
+                        onClick={() => {
+                          setActiveTab('admin-dashboard');
+                          setShowPersonaDropdown(false);
+                        }}
+                        className="w-full px-3 py-2 text-left hover:bg-purple-50 text-purple-900 rounded-xl text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer"
+                      >
+                        <Shield className="w-3.5 h-3.5 text-purple-600" />
+                        <span>Admin Console</span>
+                      </button>
+                    )}
                   </div>
 
                   {/* Sign Out Option */}

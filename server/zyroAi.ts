@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
 import { db } from './db.ts';
 import { Product } from '../src/types/index.ts';
+import { isProductExpress30MinEligible } from './delivery.ts';
 
 const ai = new GoogleGenAI({
   apiKey: process.env.GEMINI_API_KEY,
@@ -10,6 +11,20 @@ const ai = new GoogleGenAI({
     },
   },
 });
+
+export type ZyroIntent =
+  | 'PRODUCT_OVERVIEW'
+  | 'SPECIFICATIONS'
+  | 'MINIMUM_ORDER'
+  | 'STOCK'
+  | 'PRICE'
+  | 'CUSTOMIZATION'
+  | 'DELIVERY'
+  | 'RETURN_POLICY'
+  | 'ADD_TO_CART'
+  | 'PLACE_ORDER'
+  | 'ORDER_CONFIRMATION'
+  | 'OTHER';
 
 export interface ZyroChatInput {
   message: string;
@@ -28,6 +43,7 @@ export interface ZyroChatResponse {
   kannadaReply?: string;
   languageDetected: 'en' | 'kn';
   citations: string[];
+  intent?: ZyroIntent;
   orderProposal?: {
     readyToConfirm: boolean;
     productId: string;
@@ -58,20 +74,207 @@ export interface ZyroChatResponse {
     availableStock: number;
     category: string;
     isExpress30Min: boolean;
+    minOrderQuantity?: number;
+    sellingUnit?: string;
   };
   isEnding?: boolean;
 }
 
-// =========================================================================
-// TRAINED PRODUCT DATABASE & COMPREHENSIVE KNOWLEDGE ENGINE
-// =========================================================================
-function trainedKnowledgeGuidance(message: string, currentProduct?: Product): ZyroChatResponse {
-  const q = message.toLowerCase();
+/**
+ * Sanitize PDF or extracted document text so that raw binary, control codes,
+ * or corrupted unreadable characters never reach the customer.
+ */
+export function sanitizeExtractedDocText(raw?: string): string {
+  if (!raw) return '';
+  // Remove non-printable control characters (except common whitespace)
+  const clean = raw.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ').trim();
+  // If text looks like corrupted garbage (excessive replacement characters or low ascii ratio)
+  if (clean.length > 20) {
+    const printableCount = (clean.match(/[\w\s.,!?:;'"()\/-]/g) || []).length;
+    if (printableCount / clean.length < 0.6) {
+      return ''; // Consider corrupted/unreadable
+    }
+  }
+  return clean;
+}
+
+/**
+ * Intent Classifier: strictly classifies customer input into one primary intent.
+ */
+export function classifyCustomerIntent(message: string, hasPendingOrderProposal = false): ZyroIntent {
+  const q = message.toLowerCase().trim();
+
+  // 1. Order Confirmation (only when explicitly confirming a presented proposal)
+  if (
+    hasPendingOrderProposal &&
+    (/^(yes|confirm|place it|proceed|ok|sure|go ahead|yes please|ಹೌದು|ಖಚಿತಪಡಿಸಿ)$/i.test(q) ||
+      q.includes('confirm order') ||
+      q.includes('place the order') ||
+      q.includes('confirm it'))
+  ) {
+    return 'ORDER_CONFIRMATION';
+  }
+
+  // 2. Add to Cart (explicit customer instruction to add item to cart)
+  if (
+    /^(add to cart|add this to cart|add it to my cart|add to bag|put in cart|put this in cart|add item|ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿ|ಕಾರ್ಟ್)/i.test(
+      q
+    ) ||
+    ((q.includes('add') || q.includes('put')) && (q.includes('cart') || q.includes('bag') || q.includes('basket')))
+  ) {
+    return 'ADD_TO_CART';
+  }
+
+  // 3. Minimum Order Quantity (check BEFORE general order keywords!)
+  if (
+    q.includes('minimum order') ||
+    q.includes('min order') ||
+    q.includes('minimum quantity') ||
+    q.includes('moq') ||
+    q.includes('min qty') ||
+    q.includes('least quantity') ||
+    q.includes('ಕನಿಷ್ಠ ಆರ್ಡರ್') ||
+    q.includes('ಕನಿಷ್ಠ ಪ್ರಮಾಣ')
+  ) {
+    return 'MINIMUM_ORDER';
+  }
+
+  // 4. Place Order / Buy instruction
+  if (
+    q.includes('place order') ||
+    q.includes('i want to order') ||
+    q.includes('order this') ||
+    q.includes('buy this now') ||
+    q.includes('book this now') ||
+    q.includes('order now') ||
+    q.includes('ಖರೀದಿಸಿ') ||
+    q.includes('ಆರ್ಡರ್ ಮಾಡಿ')
+  ) {
+    return 'PLACE_ORDER';
+  }
+
+  // 5. Stock / Inventory inquiry
+  if (
+    q.includes('how many units') ||
+    q.includes('how much stock') ||
+    q.includes('available units') ||
+    q.includes('in stock') ||
+    q.includes('out of stock') ||
+    q.includes('stock available') ||
+    q.includes('available count') ||
+    q.includes('units left') ||
+    q.includes('ಸ್ಟಾಕ್') ||
+    q.includes('ಎಷ್ಟು ಲಭ್ಯವಿದೆ')
+  ) {
+    return 'STOCK';
+  }
+
+  // 6. Price inquiry
+  if (
+    q.includes('price') ||
+    q.includes('how much is') ||
+    q.includes('how much does it cost') ||
+    q.includes('cost of') ||
+    q.includes('mrp') ||
+    q.includes('rate') ||
+    q.includes('discount') ||
+    q.includes('ಬೆಲೆ') ||
+    q.includes('ದರ')
+  ) {
+    return 'PRICE';
+  }
+
+  // 7. Specifications / Technical / Dosage / Ingredients inquiry
+  if (
+    q.includes('specification') ||
+    q.includes('specs') ||
+    q.includes('technical details') ||
+    q.includes('features') ||
+    q.includes('ingredients') ||
+    q.includes('dosage') ||
+    q.includes('composition') ||
+    q.includes('dimensions') ||
+    q.includes('material') ||
+    q.includes('battery') ||
+    q.includes('processor') ||
+    q.includes('ram') ||
+    q.includes('gpu') ||
+    q.includes('ವಿವರಣೆ') ||
+    q.includes('ಗುಣಲಕ್ಷಣ')
+  ) {
+    return 'SPECIFICATIONS';
+  }
+
+  // 8. Customization inquiry
+  if (
+    q.includes('customize') ||
+    q.includes('customise') ||
+    q.includes('customization') ||
+    q.includes('custom printing') ||
+    q.includes('personalize') ||
+    q.includes('engraving') ||
+    q.includes('ಕಸ್ಟಮೈಸ್')
+  ) {
+    return 'CUSTOMIZATION';
+  }
+
+  // 9. Delivery / Shipping / Express inquiry
+  if (
+    q.includes('delivery') ||
+    q.includes('deliver') ||
+    q.includes('when will it arrive') ||
+    q.includes('shipping') ||
+    q.includes('courier') ||
+    q.includes('pincode') ||
+    q.includes('pin code') ||
+    q.includes('30 min') ||
+    q.includes('express') ||
+    q.includes('ಡೆಲಿವರಿ')
+  ) {
+    return 'DELIVERY';
+  }
+
+  // 10. Return Policy inquiry
+  if (
+    q.includes('return') ||
+    q.includes('refund') ||
+    q.includes('exchange') ||
+    q.includes('replacement') ||
+    q.includes('warranty') ||
+    q.includes('ವಾಪಸ್')
+  ) {
+    return 'RETURN_POLICY';
+  }
+
+  // 11. Product Overview / Introduction
+  if (
+    q.includes('tell me about') ||
+    q.includes('what is this') ||
+    q.includes('overview') ||
+    q.includes('explain') ||
+    q.includes('describe') ||
+    q.includes('ಉತ್ಪನ್ನದ ಬಗ್ಗೆ')
+  ) {
+    return 'PRODUCT_OVERVIEW';
+  }
+
+  return 'OTHER';
+}
+
+/**
+ * Trained Knowledge Engine:
+ * Implements strict 1–3 short sentence answers, domain knowledge, and order safety.
+ */
+function trainedKnowledgeGuidance(
+  message: string,
+  currentProduct?: Product,
+  customerName?: string
+): ZyroChatResponse {
+  const q = message.toLowerCase().trim();
   const allProducts = db.getProducts({ status: 'published' });
-  const docResults = db.searchKnowledgeBase(message, currentProduct?.id);
   const citations: string[] = [];
 
-  // Match target product from query or current context
+  // Match target product from query or context
   let targetProduct = currentProduct;
   if (!targetProduct) {
     targetProduct = allProducts.find((p) => {
@@ -82,368 +285,321 @@ function trainedKnowledgeGuidance(message: string, currentProduct?: Product): Zy
       if (q.includes(pName) || q.includes(pBrand) || q.includes(pSku)) return true;
       if (p.tags && p.tags.some((t) => q.includes(t.toLowerCase()))) return true;
 
-      // Smart keyword matches for natural conversation
       if (q.includes('dolo') && pName.includes('dolo')) return true;
       if (q.includes('calpol') && pName.includes('calpol')) return true;
       if (q.includes('electral') && pName.includes('electral')) return true;
       if (q.includes('moov') && pName.includes('moov')) return true;
       if (q.includes('menthoplus') && pName.includes('menthoplus')) return true;
-      if (q.includes('ashwagandha') && pName.includes('ashwagandha')) return true;
-      if ((q.includes('ragi') || q.includes('idli')) && pName.includes('ragi')) return true;
-      if (q.includes('vegetable idli') && pName.includes('vegetable idli')) return true;
+      if (q.includes('ragi') && pName.includes('ragi')) return true;
       if (q.includes('ladoo') && pName.includes('ladoo')) return true;
-      if (q.includes('pancake') && pName.includes('pancake')) return true;
-      if (q.includes('smoothie') && pName.includes('smoothie')) return true;
-      if ((q.includes('iphone') || q.includes('apple')) && pName.includes('iphone')) return true;
-      if ((q.includes('s25') || q.includes('galaxy') || q.includes('samsung')) && pName.includes('s25')) return true;
+      if (q.includes('iphone') && pName.includes('iphone')) return true;
+      if (q.includes('s25') && pName.includes('s25')) return true;
       if (q.includes('pixel') && pName.includes('pixel')) return true;
       if (q.includes('oneplus') && pName.includes('oneplus')) return true;
-      if ((q.includes('tuf') || (q.includes('asus') && q.includes('gaming'))) && pName.includes('tuf')) return true;
+      if (q.includes('tuf') && pName.includes('tuf')) return true;
       if (q.includes('vivobook') && pName.includes('vivobook')) return true;
       if (q.includes('inspiron') && pName.includes('inspiron')) return true;
-      if ((q.includes('lenovo') || q.includes('ideapad')) && pName.includes('ideapad')) return true;
+      if (q.includes('lenovo') && pName.includes('lenovo')) return true;
       if (q.includes('niacinamide') && pName.includes('niacinamide')) return true;
       if (q.includes('cetaphil') && pName.includes('cetaphil')) return true;
       if (q.includes('sunscreen') && pName.includes('sunscreen')) return true;
       if (q.includes('lipstick') && pName.includes('lipstick')) return true;
       if (q.includes('nike') && pName.includes('nike')) return true;
       if (q.includes('adidas') && pName.includes('adidas')) return true;
-      if (q.includes('raymond') && pName.includes('raymond')) return true;
-      if (q.includes('earbuds') && pName.includes('earbuds')) return true;
 
       return false;
     });
   }
 
-  // Check for conversation ending / thank you intent
+  // Conversation ending / thank you check
   const isEndingIntent =
-    q.includes('thank') ||
+    /^(thank you|thanks|bye|goodbye|that's all|that's it|done|no more|dhanyavada|ಧನ್ಯವಾದ|ಸಾಕು)/i.test(q) ||
+    q.includes('thank you') ||
     q.includes('thanks') ||
-    q.includes('bye') ||
-    q.includes('goodbye') ||
-    q.includes("that's all") ||
-    q.includes("that's it") ||
-    q.includes('done') ||
-    q.includes('no more') ||
-    q.includes('nothing else') ||
-    q.includes('clear now') ||
-    q.includes('ಧನ್ಯವಾದ') ||
-    q.includes('ಸಾಕು');
+    q.includes('goodbye');
 
   if (isEndingIntent) {
     return {
-      reply: `You are most welcome! Thank you so much for choosing TrendVibe Store. I am glad I could answer all your queries using our verified product data. Have a wonderful day ahead!`,
-      kannadaReply: `ನಿಮಗೆ ಸ್ವಾಗತ! ಟ್ರೆಂಡ್‌ವೈಬ್ ಸ್ಟೋರ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿದ್ದಕ್ಕಾಗಿ ತುಂಬಾ ಧನ್ಯವಾದಗಳು. ನಿಮ್ಮ ಎಲ್ಲಾ ಪ್ರಶ್ನೆಗಳಿಗೆ ಉತ್ತರಿಸಲು ಸಂತೋಷವಾಯಿತು. ಧನ್ಯವಾದಗಳು, ನಿಮ್ಮ ದಿನ ಶುಭವಾಗಿರಲಿ!`,
+      reply: `You're most welcome! Thank you for choosing TrendVibe Store. Have a wonderful day ahead!`,
+      kannadaReply: `ನಿಮಗೆ ಸ್ವಾಗತ! ಟ್ರೆಂಡ್‌ವೈಬ್ ಸ್ಟೋರ್ ಅನ್ನು ಸಂಪರ್ಕಿಸಿದ್ದಕ್ಕಾಗಿ ತುಂಬಾ ಧನ್ಯವಾದಗಳು. ನಿಮ್ಮ ದಿನ ಶುಭವಾಗಿರಲಿ!`,
       languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
-      citations: ['TrendVibe Customer Support'],
+      citations: ['TrendVibe Store Support'],
+      intent: 'OTHER',
       isEnding: true,
     };
   }
 
-  // Check for "Add to Cart" intent
-  const isCartIntent =
-    q.includes('cart') ||
-    q.includes('bag') ||
-    q.includes('basket') ||
-    q.includes('add this') ||
-    q.includes('add it') ||
-    q.includes('put this') ||
-    q.includes('put in') ||
-    q.includes('add product') ||
-    q.includes('ಕಾರ್ಟ್‌') ||
-    q.includes('ಕಾರ್ಟ್');
+  const intent = classifyCustomerIntent(message);
 
-  if (isCartIntent) {
-    if (targetProduct) {
-      const qtyMatch = message.match(/\b([1-9]|10)\b/);
-      const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
+  // If a product is in context, handle specific factual intents immediately (1-3 sentences rule)
+  if (targetProduct) {
+    citations.push(`TrendVibe Store: ${targetProduct.name} (SKU: ${targetProduct.sku})`);
+    if (targetProduct.pdfDocName) {
+      citations.push(`${targetProduct.pdfDocName} (Verified Documentation)`);
+    }
 
-      citations.push(`TrendVibe Store Catalogue: ${targetProduct.name}`);
-      citations.push('TrendVibe Shopping Cart & Inventory');
+    const sellingUnit = targetProduct.sellingUnit || 'piece';
+    const minOrderQty = targetProduct.minOrderQuantity || 1;
+    const isExpress = isProductExpress30MinEligible(targetProduct);
 
-      const cartAction = {
-        type: 'ADD_TO_CART' as const,
-        productId: targetProduct.id,
-        productName: targetProduct.name,
-        quantity: qty,
-        price: targetProduct.price,
-        product: targetProduct,
-      };
-
+    // INTENT: MINIMUM_ORDER (Crucial: do NOT create order/cart)
+    if (intent === 'MINIMUM_ORDER') {
       return {
-        reply: `Done! I have added ${qty}x "${targetProduct.name}" (₹${targetProduct.price.toLocaleString('en-IN')}) directly to your shopping cart. You can review your cart anytime or ask me to add more items!`,
-        kannadaReply: `ಖಂಡಿತ! ನಾನು ${qty}x "${targetProduct.name}" (₹${targetProduct.price}) ಅನ್ನು ನಿಮ್ಮ ಶಾಪಿಂಗ್ ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿದ್ದೇನೆ. ನೀವು ಕಾರ್ಟ್ ಪರಿಶೀಲಿಸಬಹುದು ಅಥವಾ ಇನ್ನಷ್ಟು ಉತ್ಪನ್ನಗಳ ಬಗ್ಗೆ ಕೇಳಬಹುದು.`,
+        reply: `The minimum order quantity for ${targetProduct.name} is ${minOrderQty} ${sellingUnit}. You can purchase this exact quantity or more as per your requirement.`,
+        kannadaReply: `${targetProduct.name} ಗೆ ಕನಿಷ್ಠ ಆರ್ಡರ್ ಪ್ರಮಾಣ ${minOrderQty} ${sellingUnit} ಆಗಿದೆ.`,
         languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
         citations,
-        cartAction,
+        intent: 'MINIMUM_ORDER',
         productContext: {
           id: targetProduct.id,
           name: targetProduct.name,
           price: targetProduct.price,
           availableStock: targetProduct.stock.available,
           category: targetProduct.category,
-          isExpress30Min: targetProduct.deliveryConfig.supportsExpress30Min,
+          isExpress30Min: isExpress,
+          minOrderQuantity: minOrderQty,
+          sellingUnit,
         },
       };
-    } else {
+    }
+
+    // INTENT: PRICE
+    if (intent === 'PRICE') {
+      const discountText = targetProduct.discountPercent > 0 ? ` (${targetProduct.discountPercent}% off MRP ₹${targetProduct.mrp})` : '';
       return {
-        reply: `Which product would you like me to add to your cart? You can tell me the name, such as Dolo 650, Fresh Ragi Idli, ASUS TUF Gaming Laptop, or iPhone 16!`,
-        kannadaReply: `ನಿಮ್ಮ ಕಾರ್ಟ್‌ಗೆ ಯಾವ ಉತ್ಪನ್ನವನ್ನು ಸೇರಿಸಬೇಕೆಂದು ಬಯಸುತ್ತೀರಿ? ಡೋಲೋ 650, ತಾಜಾ ರಾಗಿ ಇಡ್ಲಿ ಅಥವಾ ಲ್ಯಾಪ್‌ಟಾಪ್‌ನ ಹೆಸರನ್ನು ಹೇಳಿ!`,
+        reply: `The price for ${targetProduct.name} is ₹${targetProduct.price.toLocaleString('en-IN')} per ${sellingUnit}${discountText}. All prices include applicable taxes.`,
+        kannadaReply: `${targetProduct.name} ನ ಬೆಲೆ ಪ್ರತಿ ${sellingUnit}ಗೆ ₹${targetProduct.price} ಆಗಿದೆ.`,
         languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
-        citations: ['TrendVibe Store Catalogue'],
+        citations,
+        intent: 'PRICE',
+        productContext: {
+          id: targetProduct.id,
+          name: targetProduct.name,
+          price: targetProduct.price,
+          availableStock: targetProduct.stock.available,
+          category: targetProduct.category,
+          isExpress30Min: isExpress,
+          minOrderQuantity: minOrderQty,
+          sellingUnit,
+        },
+      };
+    }
+
+    // INTENT: STOCK
+    if (intent === 'STOCK') {
+      const avail = targetProduct.stock.available;
+      const stockMsg =
+        avail > 0
+          ? `We currently have ${avail} ${sellingUnit}s available in stock.`
+          : `Currently, ${targetProduct.name} is out of stock.`;
+      return {
+        reply: stockMsg,
+        kannadaReply: avail > 0 ? `ಪ್ರಸ್ತುತ ${avail} ${sellingUnit}ಗಳು ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಲಭ್ಯವಿದೆ.` : `ಸದ್ಯಕ್ಕೆ ಇದು ಸ್ಟಾಕ್‌ನಲ್ಲಿಲ್ಲ.`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations,
+        intent: 'STOCK',
+        productContext: {
+          id: targetProduct.id,
+          name: targetProduct.name,
+          price: targetProduct.price,
+          availableStock: avail,
+          category: targetProduct.category,
+          isExpress30Min: isExpress,
+        },
+      };
+    }
+
+    // INTENT: DELIVERY
+    if (intent === 'DELIVERY') {
+      let deliveryMsg = '';
+      if (isExpress) {
+        deliveryMsg = `${targetProduct.name} is eligible for ⚡ 30-Minute Hyper-Local Express Delivery in Bangalore serviceable pin codes. Standard delivery takes 2 to 4 business days.`;
+      } else {
+        const fee = targetProduct.deliveryConfig.shippingFee > 0 ? ` Flat ₹${targetProduct.deliveryConfig.shippingFee} shipping fee applies.` : ' Free delivery applies.';
+        deliveryMsg = `Standard delivery takes 2 to 4 business days across India.${fee} 30-minute express delivery is not available for this item.`;
+      }
+      return {
+        reply: deliveryMsg,
+        kannadaReply: isExpress ? `ಇದು ಬೆಂಗಳೂರಿನಲ್ಲಿ 30 ನಿಮಿಷಗಳ ಎಕ್ಸ್‌ಪ್ರೆಸ್ ಡೆಲಿವರಿಗೆ ಲಭ್ಯವಿದೆ.` : `ಇದು 2 ರಿಂದ 4 ದಿನಗಳಲ್ಲಿ ತಲುಪಲಿದೆ.`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations,
+        intent: 'DELIVERY',
+        productContext: {
+          id: targetProduct.id,
+          name: targetProduct.name,
+          price: targetProduct.price,
+          availableStock: targetProduct.stock.available,
+          category: targetProduct.category,
+          isExpress30Min: isExpress,
+        },
+      };
+    }
+
+    // INTENT: RETURN_POLICY
+    if (intent === 'RETURN_POLICY') {
+      const returnDays = targetProduct.deliveryConfig.returnPolicyDays || 0;
+      const returnMsg =
+        returnDays > 0
+          ? `${targetProduct.name} comes with a ${returnDays}-day easy replacement and return policy from delivery date.`
+          : `${targetProduct.name} is a sealed personal care or consumable item and is non-returnable once opened.`;
+      return {
+        reply: returnMsg,
+        kannadaReply: returnDays > 0 ? `ಇದಕ್ಕೆ ${returnDays} ದಿನಗಳ ರಿಟರ್ನ್ ಪಾಲಿಸಿ ಇದೆ.` : `ಇದಕ್ಕೆ ರಿಟರ್ನ್ ಲಭ್ಯವಿಲ್ಲ.`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations,
+        intent: 'RETURN_POLICY',
+      };
+    }
+
+    // INTENT: CUSTOMIZATION
+    if (intent === 'CUSTOMIZATION') {
+      const customOpts = targetProduct.customizationOptions;
+      if (customOpts && (typeof customOpts === 'string' ? customOpts.length > 0 : Object.keys(customOpts).length > 0)) {
+        return {
+          reply: `Yes, customization is supported for ${targetProduct.name}. Documented options include: ${typeof customOpts === 'string' ? customOpts : JSON.stringify(customOpts)}.`,
+          kannadaReply: `ಹೌದು, ಕಸ್ಟಮೈಸೇಶನ್ ಲಭ್ಯವಿದೆ.`,
+          languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+          citations,
+          intent: 'CUSTOMIZATION',
+        };
+      } else {
+        return {
+          reply: `Customization is not available for ${targetProduct.name}. It is supplied in verified standard manufacturer packaging.`,
+          kannadaReply: `ಇದಕ್ಕೆ ಕಸ್ಟಮೈಸೇಶನ್ ಸೌಲಭ್ಯವಿಲ್ಲ.`,
+          languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+          citations,
+          intent: 'CUSTOMIZATION',
+        };
+      }
+    }
+
+    // INTENT: SPECIFICATIONS (short bullet list of relevant verified fields)
+    if (intent === 'SPECIFICATIONS') {
+      const specs = Object.entries(targetProduct.specifications || {});
+      const sanitizedDoc = sanitizeExtractedDocText(targetProduct.pdfExtractedText);
+      let specBullets = '';
+      if (specs.length > 0) {
+        specBullets = specs
+          .slice(0, 4)
+          .map(([k, v]) => `• ${k}: ${v}`)
+          .join('\n');
+      } else if (sanitizedDoc) {
+        specBullets = `• Verified Document: ${sanitizedDoc.slice(0, 150)}...`;
+      } else {
+        specBullets = 'Detailed technical specifications are not listed in the verified product information.';
+      }
+
+      return {
+        reply: `Here are the verified specifications for ${targetProduct.name}:\n${specBullets}`,
+        kannadaReply: `${targetProduct.name} ನ ಮುಖ್ಯ ವಿವರಣೆಗಳು:\n${specBullets}`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations,
+        intent: 'SPECIFICATIONS',
+        productContext: {
+          id: targetProduct.id,
+          name: targetProduct.name,
+          price: targetProduct.price,
+          availableStock: targetProduct.stock.available,
+          category: targetProduct.category,
+          isExpress30Min: isExpress,
+        },
+      };
+    }
+
+    // INTENT: PRODUCT_OVERVIEW
+    if (intent === 'PRODUCT_OVERVIEW') {
+      const desc = targetProduct.shortDescription || targetProduct.description;
+      return {
+        reply: `${targetProduct.name} by ${targetProduct.brand}: ${desc.slice(0, 160)}. Current price is ₹${targetProduct.price.toLocaleString('en-IN')}.`,
+        kannadaReply: `${targetProduct.name}: ${desc.slice(0, 120)}. ಬೆಲೆ ₹${targetProduct.price}.`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations,
+        intent: 'PRODUCT_OVERVIEW',
+        productContext: {
+          id: targetProduct.id,
+          name: targetProduct.name,
+          price: targetProduct.price,
+          availableStock: targetProduct.stock.available,
+          category: targetProduct.category,
+          isExpress30Min: isExpress,
+        },
+      };
+    }
+
+    // INTENT: ADD_TO_CART (explicit instruction)
+    if (intent === 'ADD_TO_CART') {
+      const qtyMatch = message.match(/\b([1-9]|10)\b/);
+      const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : minOrderQty;
+
+      return {
+        reply: `I have added ${qty}x "${targetProduct.name}" to your cart at ₹${targetProduct.price.toLocaleString('en-IN')} each.`,
+        kannadaReply: `ನಾನು ${qty}x "${targetProduct.name}" ಅನ್ನು ನಿಮ್ಮ ಕಾರ್ಟ್‌ಗೆ ಸೇರಿಸಿದ್ದೇನೆ.`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations,
+        intent: 'ADD_TO_CART',
+        cartAction: {
+          type: 'ADD_TO_CART',
+          productId: targetProduct.id,
+          productName: targetProduct.name,
+          quantity: qty,
+          price: targetProduct.price,
+          product: targetProduct,
+        },
+        productContext: {
+          id: targetProduct.id,
+          name: targetProduct.name,
+          price: targetProduct.price,
+          availableStock: targetProduct.stock.available,
+          category: targetProduct.category,
+          isExpress30Min: isExpress,
+        },
+      };
+    }
+
+    // INTENT: PLACE_ORDER (explicit instruction to buy/order)
+    if (intent === 'PLACE_ORDER') {
+      const qtyMatch = message.match(/\b([1-9]|10)\b/);
+      const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : minOrderQty;
+      const subtotal = targetProduct.price * qty;
+      const tax = Math.round(subtotal * 0.05);
+      const shippingFee = subtotal > 499 ? 0 : 25;
+      const totalAmount = subtotal + tax + shippingFee;
+
+      const orderProposal = {
+        readyToConfirm: true,
+        productId: targetProduct.id,
+        productName: targetProduct.name,
+        quantity: qty,
+        unitPrice: targetProduct.price,
+        subtotal,
+        tax,
+        shippingFee,
+        totalAmount,
+        isExpress30Min: isExpress,
+        deliveryAddress: 'Flat 402, Green Glen Heights, Bellandur, Bangalore',
+        pincode: '560103',
+        paymentMethod: 'COD' as const,
+      };
+
+      const speedText = isExpress ? '30-minute express delivery' : 'standard 2-4 day delivery';
+      return {
+        reply: `I've prepared an order for ${qty}x "${targetProduct.name}" totaling ₹${totalAmount.toLocaleString('en-IN')} with ${speedText} to Bangalore 560103. Would you like me to confirm this order?`,
+        kannadaReply: `${qty}x "${targetProduct.name}" ಗೆ ಒಟ್ಟು ₹${totalAmount} ಆಗಿದೆ. ನಾನು ಆರ್ಡರ್ ದೃಢೀಕರಿಸಲೇ?`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations,
+        intent: 'PLACE_ORDER',
+        orderProposal,
       };
     }
   }
 
-  // Check for order booking intent
-  const isOrderIntent =
-    q.includes('order') ||
-    q.includes('buy') ||
-    q.includes('purchase') ||
-    q.includes('book') ||
-    q.includes('ಖರೀದಿಸಿ') ||
-    q.includes('ಆರ್ಡರ್');
-
-  if (isOrderIntent && targetProduct) {
-    const qtyMatch = message.match(/\b([1-9]|10)\b/);
-    const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-    const subtotal = targetProduct.price * qty;
-    const tax = Math.round(subtotal * 0.05);
-    const shippingFee = subtotal > 499 ? 0 : 25;
-    const totalAmount = subtotal + tax + shippingFee;
-    const isExpress = targetProduct.deliveryConfig.supportsExpress30Min;
-
-    citations.push(`TrendVibe Verified Inventory (SKU: ${targetProduct.sku})`);
-
-    const orderProposal = {
-      readyToConfirm: true,
-      productId: targetProduct.id,
-      productName: targetProduct.name,
-      quantity: qty,
-      unitPrice: targetProduct.price,
-      subtotal,
-      tax,
-      shippingFee,
-      totalAmount,
-      isExpress30Min: isExpress,
-      deliveryAddress: 'Flat 402, Green Glen Heights, Bellandur Outer Ring Road, Bangalore',
-      pincode: '560103',
-      paymentMethod: 'COD' as const,
-    };
-
-    return {
-      reply: `I have prepared your order for ${qty}x "${targetProduct.name}" at ₹${targetProduct.price} each. Total payable is ₹${totalAmount} (including 5% GST and ${
-        shippingFee === 0 ? 'Free Shipping' : `₹${shippingFee} delivery`
-      }). Delivery target: ${
-        isExpress ? '⚡ 30-Minute Express Delivery' : 'Standard 1-2 Days Courier'
-      } to Bangalore 560103. Would you like me to confirm and place this order now?`,
-      kannadaReply: `ನಾನು ${qty}x "${targetProduct.name}" ಗೆ ಆರ್ಡರ್ ಸಿದ್ಧಪಡಿಸಿದ್ದೇನೆ. ಒಟ್ಟು ಮೊತ್ತ ₹${totalAmount}. 30 ನಿಮಿಷಗಳಲ್ಲಿ ತಲುಪಿಸಲಾಗುವುದು. ನಾನು ಇದನ್ನು ದೃಢೀಕರಿಸಲೇ?`,
-      languageDetected: 'en',
-      citations,
-      orderProposal,
-      productContext: {
-        id: targetProduct.id,
-        name: targetProduct.name,
-        price: targetProduct.price,
-        availableStock: targetProduct.stock.available,
-        category: targetProduct.category,
-        isExpress30Min: isExpress,
-      },
-    };
-  }
-
-  // 1. Medicine & Dosage Guidelines (Dolo 650, Calpol, Electral, Moov, MenthoPlus)
-  if (
-    q.includes('dolo') ||
-    q.includes('paracetamol') ||
-    q.includes('calpol') ||
-    q.includes('fever') ||
-    q.includes('dosage') ||
-    q.includes('tablet')
-  ) {
-    citations.push('Dolo-650-Clinical-Monograph-and-Dosage.pdf (Section 1: Dosage)');
-    citations.push('Indian Pharmacopoeia & Micro Labs Quality Standards');
-
-    return {
-      reply: `For fever and mild to moderate pain relief, Dolo 650 Tablet (Paracetamol 650mg) is taken as 1 tablet every 4 to 6 hours as needed, with water and ideally after food. The absolute maximum adult dose is 4,000mg (not exceeding 6 tablets in 24 hours). Keep a minimum gap of 4 hours between doses. We currently have stock available at ₹30 for a strip of 15 tablets (12% off MRP ₹34) with 30-minute express delivery in Bangalore.`,
-      kannadaReply: `ಡೋಲೋ 650 ಮಾತ್ರೆಯನ್ನು ವಯಸ್ಕರು ಅಗತ್ಯವಿದ್ದಾಗ ಪ್ರತಿ 4 ರಿಂದ 6 ಗಂಟೆಗಳಿಗೊಮ್ಮೆ 1 ಮಾತ್ರೆಯಂತೆ ತೆಗೆದುಕೊಳ್ಳಬಹುದು. 24 ಗಂಟೆಗಳಲ್ಲಿ 6 ಮಾತ್ರೆಗಳನ್ನು ಮೀರಬಾರದು. ಬೆಲೆ ₹30 (15 ಮಾತ್ರೆಗಳ ಸ್ಟ್ರಿಪ್).`,
-      languageDetected: 'en',
-      citations,
-    };
-  }
-
-  if (q.includes('electral') || q.includes('ors') || q.includes('dehydration') || q.includes('heat')) {
-    citations.push('Electral-WHO-ORS-Reconstitution-Standard.pdf (WHO Formula)');
-    return {
-      reply: `Electral is a WHO-formulated Oral Rehydration Salt (ORS). To prepare: dissolve the entire 21.8g sachet in exactly 1 Litre (1000ml) of clean drinking water or boiled & cooled water. Stir until completely clear. Do not boil after dissolving. Consume within 24 hours. Available for ₹21 per sachet with 30-minute hyper-local delivery in Bangalore.`,
-      kannadaReply: `ಎಲೆಕ್ಟ್ರಾಲ್ ಓಆರ್‌ಎಸ್ ಪುಡಿಯ ಸಂಪೂರ್ಣ 21.8 ಗ್ರಾಂ ಸ್ಯಾಚೆಟ್ ಅನ್ನು 1 ಲೀಟರ್ ಶುದ್ಧ ನೀರಿನಲ್ಲಿ ಕರಗಿಸಿ. 24 ಗಂಟೆಗಳ ಒಳಗೆ ಸೇವಿಸಿ. ಬೆಲೆ ₹21.`,
-      languageDetected: 'en',
-      citations,
-    };
-  }
-
-  if (q.includes('moov') || q.includes('sprain') || q.includes('backache') || q.includes('pain relief') || q.includes('menthoplus')) {
-    citations.push('Ayurvedic Pharmacopoeia (Moov 4 Active Herbal Oils)');
-    return {
-      reply: `Moov Pain Relief Cream (₹175, 50g) and Moov Fast Spray (₹144, 35g) feature 100% Ayurvedic warmth formulas containing Wintergreen, Nilgiri, Pudinah, and Turpentine oil. They penetrate deeply to relieve backaches, muscle spasms, and neck stiffness. MenthoPlus Balm (₹40, 10g) provides fast relief for tension headaches with cooling camphor and menthol. All pain relief items qualify for 30-minute express delivery!`,
-      kannadaReply: `ಮೂವ್ ಕ್ರೀಮ್ ಮತ್ತು ಸ್ಪ್ರೇ 100% ಆಯುರ್ವೇದಿಕ ತೈಲಗಳನ್ನು ಹೊಂದಿದ್ದು, ಬೆನ್ನುನೋವು ಮತ್ತು ಕೀಲುನೋವಿಗೆ ತಕ್ಷಣ ಪರಿಹಾರ ನೀಡುತ್ತದೆ. 30 ನಿಮಿಷಗಳಲ್ಲಿ ಡೆಲಿವರಿ ಲಭ್ಯ.`,
-      languageDetected: 'en',
-      citations,
-    };
-  }
-
-  // 2. Food & Health Kitchen Guidelines (Ragi Idli, Veg Idli, Protein Ladoo, Pancakes, Smoothies)
-  if (
-    q.includes('ragi') ||
-    q.includes('idli') ||
-    q.includes('breakfast') ||
-    q.includes('ladoo') ||
-    q.includes('smoothie') ||
-    q.includes('pancake') ||
-    q.includes('food') ||
-    q.includes('calories')
-  ) {
-    citations.push('Ragi-Idli-Sprouted-Millet-Nutritional-Analysis.pdf');
-    citations.push('TrendVibe Health Kitchen Standard Recipes');
-
-    return {
-      reply: `Our Health Kitchen offers freshly prepared South Indian superfoods:
-• Fresh Ragi Idli (Pack of 4 with Coconut Chutney & Sambar, ₹79): 210 kcal, 7.2g dietary fiber, 344mg Calcium, naturally gluten-free.
-• Steamed Vegetable Idli (Pack of 4, ₹75): infused with carrots, peas, and curry leaves.
-• Homemade Protein Ladoo (Pack of 6, ₹159): zero refined white sugar, made with Medjool dates, almonds, cashews, and flaxseeds (7g protein per ball).
-• Peanut Banana Protein Smoothie (350ml Jar, ₹110): 18g whey isolate protein with roasted peanut butter.
-All food items are steamed fresh upon order and delivered in 30 minutes in serviceable Bangalore areas!`,
-      kannadaReply: `ನಮ್ಮಲ್ಲಿ ತಾಜಾ ರಾಗಿ ಇಡ್ಲಿ (₹79), ತರಕಾರಿ ಇಡ್ಲಿ (₹75) ಮತ್ತು ಪ್ರೋಟೀನ್ ಲಾಡು (₹159) ಲಭ್ಯವಿದೆ. 30 ನಿಮಿಷಗಳ ಎಕ್ಸ್‌ಪ್ರೆಸ್ ಡೆಲಿವರಿ ಸೌಲಭ್ಯವಿದೆ.`,
-      languageDetected: 'en',
-      citations,
-    };
-  }
-
-  // 3. Laptop Specifications & Comparisons (ASUS TUF, Vivobook, Dell, Lenovo)
-  if (
-    q.includes('laptop') ||
-    q.includes('asus') ||
-    q.includes('tuf') ||
-    q.includes('gaming') ||
-    q.includes('dell') ||
-    q.includes('lenovo') ||
-    q.includes('ram') ||
-    q.includes('rtx')
-  ) {
-    citations.push('ASUS-TUF-F15-Thermal-and-Expansion-Guide.pdf');
-    citations.push('Manufacturer Benchmark Spec Sheets 2026');
-
-    return {
-      reply: `Here are our top verified laptop configurations:
-1. ASUS TUF Gaming F15 (₹58,990): Intel Core i5-11400H (6 cores), NVIDIA RTX 3050 4GB GPU, 16GB DDR4 RAM (dual SO-DIMM slots upgradeable to 32GB), 512GB NVMe SSD + secondary M.2 open slot, 144Hz IPS display.
-2. ASUS Vivobook 15 (₹36,990): Intel Core i3 12th Gen, 8GB RAM, 512GB SSD, thin & light 1.7kg with 180° hinge.
-3. Dell Inspiron 15 (₹49,990): Intel Core i5 12th Gen, 16GB RAM, 512GB SSD, 120Hz smooth anti-glare display.
-4. Lenovo IdeaPad Slim 3 (₹45,990): AMD Ryzen 5 7520U, 16GB LPDDR5, Dolby Audio, MIL-STD-810H durability.
-All laptops come with 1 Year Official Manufacturer Warranty and 7-day return policy.`,
-      kannadaReply: `ಅಸೂಸ್ TUF ಗೇಮಿಂಗ್ F15 (₹58,990) RTX 3050 ಗ್ರಾಫಿಕ್ಸ್ ಮತ್ತು 16GB RAM ಹೊಂದಿದೆ. ಡೆಲ್ ಮತ್ತು ಲೆನೊವೊ ಲ್ಯಾಪ್‌ಟಾಪ್‌ಗಳೂ ಲಭ್ಯವಿವೆ.`,
-      languageDetected: 'en',
-      citations,
-    };
-  }
-
-  // 4. Smartphone Flagship Specifications (iPhone 16, Galaxy S25, Pixel 9a, OnePlus 13)
-  if (
-    q.includes('iphone') ||
-    q.includes('apple') ||
-    q.includes('samsung') ||
-    q.includes('galaxy') ||
-    q.includes('pixel') ||
-    q.includes('oneplus') ||
-    q.includes('mobile') ||
-    q.includes('phone') ||
-    q.includes('camera')
-  ) {
-    citations.push('Official Manufacturer Technical Specifications (Apple, Samsung, Google, OnePlus)');
-
-    return {
-      reply: `We feature the latest verified 5G flagship smartphones:
-• Apple iPhone 16 (128GB, ₹74,900): Apple A18 (3nm) processor, Camera Control haptic key, 48MP Fusion main sensor with 2x optical crop, and Apple Intelligence.
-• Samsung Galaxy S25 (256GB, ₹77,999): Qualcomm Snapdragon 8 Elite, 50MP ProVisual AI triple camera, Dynamic AMOLED 2X 120Hz display.
-• Google Pixel 9a (128GB, ₹44,999): Google Tensor G4, computational Night Sight and Magic Eraser, 7 years of OS upgrades.
-• OnePlus 13 (256GB, ₹64,999): Snapdragon 8 Elite, Hasselblad 50MP triple system, 6000mAh battery with 100W SuperVOOC.
-All phones are 100% genuine with sealed manufacturer packaging, invoice, and domestic warranty.`,
-      kannadaReply: `ಆಪಲ್ ಐಫೋನ್ 16 (₹74,900), ಸ್ಯಾಮ್‌ಸಂಗ್ ಗ್ಯಾಲಕ್ಸಿ S25 (₹77,999), ಗೂಗಲ್ ಪಿಕ್ಸೆಲ್ 9a (₹44,999) ಮತ್ತು ಒನ್‌ಪ್ಲಸ್ 13 ಲಭ್ಯವಿದೆ.`,
-      languageDetected: 'en',
-      citations,
-    };
-  }
-
-  // 5. Delivery, Pincode & Express 30-Min Serviceability
-  if (q.includes('delivery') || q.includes('pincode') || q.includes('pin code') || q.includes('30 min') || q.includes('express') || q.includes('shipping')) {
-    citations.push('TrendVibe Bangalore Hyper-Local Logistics SLA');
-
-    return {
-      reply: `⚡ 30-Minute Express Delivery is available for all certified Healthcare, First Aid, and Fresh Kitchen Food items across major Bangalore pin codes including 560001, 560038 (Indiranagar), 560103 (Bellandur), 560068 (Koramangala), 560034, 560008, 560025, and 560095. For tech items like laptops and phones, orders are shipped via standard tracked express couriers with 1 to 2 business days delivery. Free shipping applies on all orders above ₹499!`,
-      kannadaReply: `ಬೆಂಗಳೂರಿನಲ್ಲಿ ಔಷಧಿಗಳು ಮತ್ತು ಆಹಾರ ಪದಾರ್ಥಗಳಿಗೆ 30 ನಿಮಿಷಗಳ ಎಕ್ಸ್‌ಪ್ರೆಸ್ ಡೆಲಿವರಿ ಲಭ್ಯವಿದೆ. ₹499 ಕ್ಕಿಂತ ಹೆಚ್ಚಿನ ಆರ್ಡರ್‌ಗಳಿಗೆ ಉಚಿತ ಡೆಲಿವರಿ.`,
-      languageDetected: 'en',
-      citations,
-    };
-  }
-
-  // 6. Generic or Product Specific Knowledge with Uploaded PDF & Description
-  if (targetProduct) {
-    citations.push(`TrendVibe Store Catalogue: ${targetProduct.name}`);
-    if (targetProduct.pdfDocName) citations.push(`${targetProduct.pdfDocName} (Official Attached PDF Document)`);
-    if (targetProduct.officialSourceUrl) citations.push(targetProduct.officialSourceUrl);
-
-    // Collect all knowledge from docResults, product description, specifications, and PDF extract
-    const docSnippets = docResults.map((d) => {
-      if (!citations.includes(d.source)) citations.push(d.source);
-      return `${d.title}: ${d.content}`;
-    });
-
-    let pdfInfoSection = '';
-    if (targetProduct.pdfExtractedText) {
-      pdfInfoSection = `\n\n📄 Information from attached PDF (${targetProduct.pdfDocName || 'Product Manual'}):\n${targetProduct.pdfExtractedText.slice(0, 500)}`;
-    } else if (docSnippets.length > 0) {
-      pdfInfoSection = `\n\n📄 Verified Document Knowledge:\n${docSnippets.slice(0, 2).join('\n')}`;
-    }
-
-    const specsText = Object.entries(targetProduct.specifications || {})
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ');
-
-    const fullDetails = `${targetProduct.description}${specsText ? ` Specifications: ${specsText}.` : ''}${pdfInfoSection}`;
-
-    return {
-      reply: `For ${targetProduct.name} by ${targetProduct.brand} (₹${targetProduct.price.toLocaleString('en-IN')}, MRP: ₹${targetProduct.mrp}, ${targetProduct.discountPercent}% OFF, Stock: ${targetProduct.stock.available} available):\n\n${fullDetails}\n\nDelivery is ${
-        targetProduct.deliveryConfig.supportsExpress30Min ? '⚡ 30-Minute Express' : 'Standard 1-2 Days Courier'
-      }. Would you like me to place an order or answer any specific questions from the product documentation?`,
-      kannadaReply: `${targetProduct.name} ಪ್ರಸ್ತುತ ₹${targetProduct.price} ಗೆ ಲಭ್ಯವಿದೆ. ದಾಸ್ತಾನು: ${targetProduct.stock.available} ಯೂನಿಟ್‌ಗಳು. ${targetProduct.pdfDocName ? `ದಾಖಲೆ: ${targetProduct.pdfDocName}` : ''}`,
-      languageDetected: 'en',
-      citations,
-      productContext: {
-        id: targetProduct.id,
-        name: targetProduct.name,
-        price: targetProduct.price,
-        availableStock: targetProduct.stock.available,
-        category: targetProduct.category,
-        isExpress30Min: targetProduct.deliveryConfig.supportsExpress30Min,
-      },
-    };
-  }
-
-  // General Storefront Assistant Response
+  // Generic fallback across categories (1-3 sentences)
   return {
-    reply: `Welcome to TrendVibe Store! I can guide you across our 8 product categories:
-1. Medicines & Healthcare (Dolo 650, Calpol 500, Electral ORS, Moov Pain Relief, MenthoPlus) - 30m Express
-2. Fresh Food & Health Kitchen (Ragi Idli, Veg Idli, Homemade Protein Ladoo, Pancakes, Smoothies) - 30m Express
-3. Mobiles (iPhone 16, Samsung S25, Pixel 9a, OnePlus 13)
-4. Laptops (ASUS TUF Gaming F15, Vivobook 15, Dell Inspiron 15, Lenovo Slim 3)
-5. Cosmetics & Skincare (Minimalist Niacinamide, Cetaphil Cleanser, Dot & Key SPF 50+, Maybelline Matte)
-6. Shoes & Footwear (Nike Air Max, Adidas Ultraboost, Puma Softride, Woodland Loafers)
-7. Clothes & Apparel (Raymond Cotton Shirts, Levi's 511 Jeans, FabIndia Kurtas, Zara Bomber)
-8. Accessories (boAt ANC Earbuds, Milton Thermosteel Flask, Portronics 65W GaN Charger, Solimo Cushion)
-
-You can ask me any question about specifications, medicine dosages, nutrition, pin code delivery, or order directly!`,
-    kannadaReply: `ಟ್ರೆಂಡ್‌ವೈಬ್ ಸ್ಟೋರ್‌ಗೆ ಸ್ವಾಗತ! ನಮ್ಮಲ್ಲಿ ಔಷಧಿಗಳು, ಲ್ಯಾಪ್‌ಟಾಪ್‌ಗಳು, ಮೊಬೈಲ್‌ಗಳು ಮತ್ತು ತಾಜಾ ಆಹಾರ ಪದಾರ್ಥಗಳು ಲಭ್ಯವಿವೆ.`,
+    reply: `Welcome to TrendVibe Store! I can help you with verified specifications, prices, minimum order quantities, and stock across medicines, food, electronics, and fashion. Which product can I help you with?`,
+    kannadaReply: `ಟ್ರೆಂಡ್‌ವೈಬ್ ಸ್ಟೋರ್‌ಗೆ ಸ್ವಾಗತ! ನಮ್ಮಲ್ಲಿ ಔಷಧಿಗಳು, ಆಹಾರ ಮತ್ತು ಎಲೆಕ್ಟ್ರಾನಿಕ್ಸ್ ಲಭ್ಯವಿವೆ. ನೀವು ಯಾವ ಉತ್ಪನ್ನದ ಬಗ್ಗೆ ತಿಳಿಯಲು ಬಯಸುತ್ತೀರಿ?`,
     languageDetected: 'en',
-    citations: ['TrendVibe Store Master Product Knowledgebase'],
+    citations: ['TrendVibe Store Catalogue'],
+    intent: 'OTHER',
   };
 }
 
@@ -464,7 +620,8 @@ export async function processZyroConversation(input: ZyroChatInput): Promise<Zyr
       .slice(0, 3)
       .map((d) => {
         docCitations.push(`${d.source} (${d.title})`);
-        return `[Source: ${d.source} - ${d.title}]\n${d.content}`;
+        const cleanContent = sanitizeExtractedDocText(d.content);
+        return `[Source: ${d.source} - ${d.title}]\n${cleanContent}`;
       })
       .join('\n\n');
   }
@@ -479,44 +636,53 @@ export async function processZyroConversation(input: ZyroChatInput): Promise<Zyr
     mrp: p.mrp,
     discountPercent: p.discountPercent,
     availableStock: p.stock.available,
-    isExpress30Min: p.deliveryConfig.supportsExpress30Min,
+    minOrderQuantity: p.minOrderQuantity || 1,
+    sellingUnit: p.sellingUnit || 'piece',
+    isExpress30Min: isProductExpress30MinEligible(p),
     serviceablePincodes: p.deliveryConfig.serviceablePincodes,
   }));
 
-  // 3. System Instruction with Grounded Google Search Instruction
+  // 3. Strict System Instruction matching Turn 10 rules
   const systemInstruction = `
-You are Zyro AI, the bilingual intelligent shopping assistant and voice calling agent for "TrendVibe Store".
-You are polite, energetic, highly articulate, and expert in all 8 product categories:
-1. Medicines & Healthcare (Dolo 650, Calpol 500, Electral WHO-ORS, Moov Cream & Spray, MenthoPlus Balm)
-2. Fresh Food (Sprouted Ragi Idli, Veg Idli, Homemade Protein Ladoo, Rolled Oats Banana Pancakes, Peanut Smoothie)
-3. Mobiles (iPhone 16, Samsung Galaxy S25, Google Pixel 9a, OnePlus 13)
-4. Laptops (ASUS TUF Gaming F15, ASUS Vivobook 15, Dell Inspiron 15, Lenovo IdeaPad Slim 3)
-5. Cosmetics & Skincare (Minimalist Niacinamide Serum, Cetaphil Gentle Cleanser, Dot & Key SPF 50+, Maybelline Lipstick)
-6. Shoes & Footwear (Nike Air Max SC, Adidas Ultraboost, Puma Softride, Woodland Leather Loafers)
-7. Clothes & Apparel (Raymond Cotton Formal Shirt, Levi's 511 Jeans, FabIndia Handblock Kurta, Zara Bomber)
-8. Accessories (boAt 141 ANC Earbuds, Milton Thermosteel Flask, Portronics 65W GaN, Solimo Memory Foam Cushion)
+You are Zyro AI, the shopping assistant for TrendVibe Store.
+Your job is to understand the customer's intention, retrieve the correct product information from the connected database and uploaded PDF documents, and answer naturally in a SHORT, ACCURATE response.
+
+UNDERSTAND CUSTOMER INTENT FIRST:
+Classify each customer message into one primary intent:
+- PRODUCT_OVERVIEW: Concise overview of purpose and verified attributes.
+- SPECIFICATIONS: Short bullet list of verified specs.
+- MINIMUM_ORDER: State verified minimum order quantity and its unit. DO NOT create a cart or order.
+- STOCK: State latest verified inventory count and unit (pieces, packs, boxes).
+- PRICE: State current store price and selling unit. Mention discount only if relevant.
+- CUSTOMIZATION: State documented customization options. If none, say it is not available.
+- DELIVERY: State delivery timeline. Only promise 30-minute express if product is verified express eligible.
+- RETURN_POLICY: State return policy days.
+- ADD_TO_CART: Explicit instruction to add to cart.
+- PLACE_ORDER: Explicit instruction to buy/order.
+- ORDER_CONFIRMATION: Customer confirms order.
+- OTHER: Any other question.
+
+SHORT ANSWER RULE:
+- Answer the exact question first!
+- Normally use 1–3 short sentences.
+- For simple factual questions (price, stock, MOQ, return policy), use ONE sentence.
+- For specifications, use a short bullet list of 3-4 relevant fields.
+- Do NOT repeat the product introduction, price, discount, stock, or delivery info unless relevant to the question.
+- Do NOT add unnecessary sales pitches or repeatedly ask whether the customer wants to place an order.
+- If PDF extracted text is unreadable or missing, say clearly: "This detail is not available in the verified product information." Never show raw unreadable characters or code.
+- Match customer's language (English or Kannada).
 
 STORE DATABASE CONTEXT:
 ${JSON.stringify(productCatalogueSummary, null, 2)}
 
 CURRENT PRODUCT IN FOCUS:
-${currentProduct ? JSON.stringify(currentProduct, null, 2) : 'Browsing entire store catalogue.'}
+${currentProduct ? JSON.stringify({ ...currentProduct, isExpress30Min: isProductExpress30MinEligible(currentProduct) }, null, 2) : 'Browsing entire store catalogue.'}
 
 VERIFIED KNOWLEDGE DOCUMENTS (RAG):
 ${docsContext || 'Standard manufacturer specifications apply.'}
-
-OPERATIONAL EVIDENCE RULES:
-1. Prioritize verified store database, the product's full description, and information extracted from any uploaded PDF manuals or certificates. Always answer questions about ingredients, dosages, technical specifications, and usage instructions by citing both the product description and uploaded PDF information.
-2. If customer asks questions outside the store database (e.g. general medicine side-effects, tech benchmark comparisons, market facts, nutrition research), CHECK GOOGLE and answer accurately. Never say information is unavailable if it can be answered using verified knowledge or Google Search!
-3. For medicines and food in Bangalore pincodes (560001, 560038, 560103, 560068, 560034, 560008, 560025, 560095), promote 30-minute express delivery.
-4. ORDERING WORKFLOW: If customer wants to buy/order, read back the item, quantity, price breakdown (subtotal + 5% GST + delivery fee), and delivery address, then ask for confirmation.
-5. CONVERSATION ENDING & COURTESY: If the customer says thank you, thanks, that is all, done, bye, or indicates their questions have been answered, end the conversation warmly by thanking them for shopping with TrendVibe Store (e.g., "Thank you so much for choosing TrendVibe Store! Have a wonderful day ahead! ಧನ್ಯವಾದಗಳು!").
-6. If the user asks in Kannada, respond in Kannada. Otherwise, provide a clear English response.
-
-OUTPUT: Return conversational text. If user wants to order, include an order proposal JSON block enclosed in \`\`\`json { ... } \`\`\`.
 `.trim();
 
-  // Try Gemini generation with Google Search grounding
+  // Try Gemini generation
   try {
     const prompt = `Customer: "${input.message}"
 Customer Name: ${input.customerName || 'Customer'}
@@ -527,99 +693,68 @@ Calling Mode: ${input.isCallingSession ? 'PHONE CALL VOICE DIALOGUE' : 'CHAT'}`;
       contents: prompt,
       config: {
         systemInstruction,
-        temperature: 0.3,
-        tools: [{ googleSearch: {} }],
+        temperature: 0.2,
       },
     });
 
     const replyText = response.text || '';
-    if (replyText.trim().length > 10) {
-      // Extract Google Search grounding citations if present
-      const webCitations: string[] = [];
-      const searchChunks = (response.candidates?.[0] as any)?.groundingMetadata?.groundingChunks;
-      if (Array.isArray(searchChunks)) {
-        searchChunks.forEach((chunk: any) => {
-          if (chunk.web?.title && chunk.web?.uri) {
-            webCitations.push(`${chunk.web.title} (${new URL(chunk.web.uri).hostname})`);
-          }
-        });
-      }
+    if (replyText.trim().length > 5) {
+      const intent = classifyCustomerIntent(input.message);
 
-      // Check if an order proposal or cart action JSON block was generated
-      let orderProposal: any = undefined;
+      // Handle Add to Cart action if intent is explicitly ADD_TO_CART
       let cartAction: any = undefined;
-      const jsonMatch = replyText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-      if (jsonMatch) {
-        try {
-          const parsed = JSON.parse(jsonMatch[1]);
-          if (parsed.actionType === 'ADD_TO_CART' || parsed.type === 'ADD_TO_CART') {
-            const p = db.getProductById(parsed.productId) || currentProduct;
-            if (p) {
-              cartAction = {
-                type: 'ADD_TO_CART' as const,
-                productId: p.id,
-                productName: p.name,
-                quantity: parsed.quantity || 1,
-                price: p.price,
-                product: p,
-              };
-            }
-          } else if (parsed.productId || parsed.productName) {
-            orderProposal = parsed;
-          }
-        } catch (e) {
-          // ignore json parse error
-        }
+      if (intent === 'ADD_TO_CART' && (currentProduct || allProducts.length > 0)) {
+        const prod = currentProduct || allProducts[0];
+        const qtyMatch = input.message.match(/\b([1-9]|10)\b/);
+        const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : (prod.minOrderQuantity || 1);
+        cartAction = {
+          type: 'ADD_TO_CART' as const,
+          productId: prod.id,
+          productName: prod.name,
+          quantity: qty,
+          price: prod.price,
+          product: prod,
+        };
       }
 
-      // If customer expressed cart intent in message, ensure cartAction is resolved
-      const isCartIntentInMsg =
-        /cart|bag|basket|add this|add it|put this|put in|add product|ಕಾರ್ಟ್‌|ಕಾರ್ಟ್/i.test(input.message);
-      if (isCartIntentInMsg && !cartAction) {
-        const qLower = input.message.toLowerCase();
-        const matchedProd =
-          currentProduct ||
-          allProducts.find((p) => {
-            const pName = p.name.toLowerCase();
-            return (
-              qLower.includes(pName) ||
-              (qLower.includes('dolo') && pName.includes('dolo')) ||
-              (qLower.includes('calpol') && pName.includes('calpol')) ||
-              (qLower.includes('electral') && pName.includes('electral')) ||
-              (qLower.includes('moov') && pName.includes('moov')) ||
-              ((qLower.includes('ragi') || qLower.includes('idli')) && pName.includes('ragi')) ||
-              (qLower.includes('ladoo') && pName.includes('ladoo')) ||
-              (qLower.includes('tuf') && pName.includes('tuf')) ||
-              (qLower.includes('iphone') && pName.includes('iphone'))
-            );
-          });
+      // Handle order proposal if intent is explicitly PLACE_ORDER
+      let orderProposal: any = undefined;
+      if (intent === 'PLACE_ORDER' && (currentProduct || allProducts.length > 0)) {
+        const prod = currentProduct || allProducts[0];
+        const qtyMatch = input.message.match(/\b([1-9]|10)\b/);
+        const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : (prod.minOrderQuantity || 1);
+        const subtotal = prod.price * qty;
+        const tax = Math.round(subtotal * 0.05);
+        const shippingFee = subtotal > 499 ? 0 : 25;
+        const totalAmount = subtotal + tax + shippingFee;
 
-        if (matchedProd) {
-          const qtyMatch = input.message.match(/\b([1-9]|10)\b/);
-          const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : 1;
-          cartAction = {
-            type: 'ADD_TO_CART' as const,
-            productId: matchedProd.id,
-            productName: matchedProd.name,
-            quantity: qty,
-            price: matchedProd.price,
-            product: matchedProd,
-          };
-        }
+        orderProposal = {
+          readyToConfirm: true,
+          productId: prod.id,
+          productName: prod.name,
+          quantity: qty,
+          unitPrice: prod.price,
+          subtotal,
+          tax,
+          shippingFee,
+          totalAmount,
+          isExpress30Min: isProductExpress30MinEligible(prod),
+          deliveryAddress: 'Flat 402, Green Glen Heights, Bellandur, Bangalore',
+          pincode: '560103',
+          paymentMethod: 'COD' as const,
+        };
       }
-
-      // Clean conversational text (strip JSON block for voice readability)
-      const cleanReply = replyText.replace(/```(?:json)?\s*[\s\S]*?\s*```/g, '').trim();
 
       const isEndingMessage =
-        /thank|thanks|bye|goodbye|that's all|that's it|done|no more|dhanyavada|ಧನ್ಯವಾದ|ಸಾಕು/i.test(input.message) ||
-        /thank you for choosing|thank you so much for choosing|have a wonderful day|ಧನ್ಯವಾದಗಳು/i.test(cleanReply);
+        /^(thank|thanks|bye|goodbye|that's all|done|dhanyavada|ಧನ್ಯವಾದ|ಸಾಕು)/i.test(input.message.trim()) ||
+        /thank you for choosing|have a wonderful day|ಧನ್ಯವಾದಗಳು/i.test(replyText);
 
       return {
-        reply: cleanReply || replyText,
-        kannadaReply: input.language === 'kn' || /[\u0C80-\u0CFF]/.test(input.message) ? cleanReply : undefined,
+        reply: replyText.trim(),
+        kannadaReply: input.language === 'kn' || /[\u0C80-\u0CFF]/.test(input.message) ? replyText.trim() : undefined,
         languageDetected: /[\u0C80-\u0CFF]/.test(input.message) ? 'kn' : 'en',
-        citations: [...docCitations, ...webCitations],
+        citations: docCitations,
+        intent,
         orderProposal,
         cartAction,
         isEnding: isEndingMessage,
@@ -630,15 +765,17 @@ Calling Mode: ${input.isCallingSession ? 'PHONE CALL VOICE DIALOGUE' : 'CHAT'}`;
               price: currentProduct.price,
               availableStock: currentProduct.stock.available,
               category: currentProduct.category,
-              isExpress30Min: currentProduct.deliveryConfig.supportsExpress30Min,
+              isExpress30Min: isProductExpress30MinEligible(currentProduct),
+              minOrderQuantity: currentProduct.minOrderQuantity || 1,
+              sellingUnit: currentProduct.sellingUnit || 'piece',
             }
           : undefined,
       };
     }
   } catch (err: any) {
-    console.warn('Gemini API call returned note, using Trained Knowledge Engine:', err.message || err);
+    console.warn('Gemini API call skipped, utilizing trained knowledge engine:', err.message || err);
   }
 
-  // Fallback to our deep trained knowledge engine: guarantees 100% accurate, knowledgeable, and instant voice responses
-  return trainedKnowledgeGuidance(input.message, currentProduct);
+  // Fallback to trained knowledge engine
+  return trainedKnowledgeGuidance(input.message, currentProduct, input.customerName);
 }

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { api } from '../services/api.ts';
+import { isProductExpress30MinEligible } from '../utils/delivery.ts';
 import {
   ShoppingBag,
   Trash2,
@@ -48,9 +49,10 @@ export const CartCheckoutView: React.FC = () => {
   const [address, setAddress] = useState(defaultAddress);
   const [paymentMethod, setPaymentMethod] = useState<'COD' | 'ONLINE_RAZORPAY'>('ONLINE_RAZORPAY');
 
-  // Check if current pincode qualifies for express 30-min delivery
+  // Check if all items in cart qualify for 30-min express delivery to current customer pincode
   const isExpressEligible =
-    cartTotals.hasExpressEligibleItems && checkExpressServiceability(address.pincode);
+    cart.length > 0 &&
+    cart.every((it) => isProductExpress30MinEligible(it.product, address.pincode));
 
   const handleProceedToCheckout = () => {
     if (cart.length === 0) return;
@@ -74,6 +76,83 @@ export const CartCheckoutView: React.FC = () => {
 
       const newOrder = await api.checkout(orderPayload);
 
+      // If user chose Razorpay Online Payment, initiate official Razorpay flow
+      if (paymentMethod === 'ONLINE_RAZORPAY') {
+        try {
+          const rzpOrderRes = await api.createRazorpayOrder({
+            orderId: newOrder.id,
+            amount: newOrder.totalAmount,
+          });
+
+          // Check if Razorpay script is loaded in window
+          if (typeof (window as any).Razorpay !== 'undefined') {
+            const options = {
+              key: rzpOrderRes.keyId || 'rzp_test_TtkEQU3nkvP1Lf',
+              amount: rzpOrderRes.amount,
+              currency: rzpOrderRes.currency || 'INR',
+              name: 'TrendVibe Store',
+              description: `Payment for Order #${newOrder.orderNumber}`,
+              order_id: rzpOrderRes.razorpayOrderId,
+              prefill: {
+                name: address.name,
+                email: user?.email || 'customer@trendvibe.in',
+                contact: address.phone || '9845012345',
+              },
+              theme: {
+                color: '#4f46e5',
+              },
+              handler: async function (response: any) {
+                try {
+                  showToast('Verifying Razorpay payment signature...', 'info');
+                  await api.verifyRazorpayPayment({
+                    orderId: newOrder.id,
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  });
+
+                  confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
+                  clearCart();
+                  showToast(
+                    `Payment of ₹${newOrder.totalAmount} verified! Order #${newOrder.orderNumber} confirmed.`,
+                    'success'
+                  );
+                  setActiveTab('customer-orders');
+                } catch (verifyErr: any) {
+                  showToast(`Payment verification error: ${verifyErr.message}`, 'error');
+                  setActiveTab('customer-orders');
+                }
+              },
+              modal: {
+                ondismiss: function () {
+                  showToast(
+                    `Checkout closed. Order #${newOrder.orderNumber} is saved with payment pending.`,
+                    'info'
+                  );
+                  clearCart();
+                  setActiveTab('customer-orders');
+                },
+              },
+            };
+
+            const rzp = new (window as any).Razorpay(options);
+            rzp.on('payment.failed', function (resp: any) {
+              showToast(`Razorpay payment failed: ${resp.error?.description || 'Declined'}`, 'error');
+            });
+            rzp.open();
+            setSubmitting(false);
+            return;
+          } else {
+            // Fallback if Razorpay checkout.js script was blocked by browser
+            showToast('Razorpay script not ready, confirming order in sandbox mode', 'info');
+          }
+        } catch (rzpErr: any) {
+          console.warn('Razorpay order creation fallback:', rzpErr.message);
+          showToast(`Razorpay payment notice: ${rzpErr.message}`, 'info');
+        }
+      }
+
+      // COD or fallback flow
       confetti({ particleCount: 90, spread: 70, origin: { y: 0.6 } });
       clearCart();
       showToast(`Order #${newOrder.orderNumber} successfully placed!`, 'success');
@@ -324,15 +403,22 @@ export const CartCheckoutView: React.FC = () => {
                     }`}
                   >
                     <div className="flex items-center justify-between mb-2">
-                      <span className="font-bold text-slate-900 text-sm">Online Payment (Razorpay)</span>
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-slate-900 text-sm">Online Payment</span>
+                        <span className="bg-indigo-600 text-white font-extrabold text-[10px] px-2 py-0.5 rounded-full shadow-2xs">
+                          Razorpay
+                        </span>
+                      </div>
                       <CreditCard className="w-5 h-5 text-indigo-600" />
                     </div>
                     <p className="text-xs text-slate-500 leading-relaxed">
-                      UPI, Credit/Debit Cards, NetBanking with instantaneous verified receipt and signature confirmation.
+                      UPI, Credit/Debit Cards, NetBanking via official Razorpay test gateway with cryptographic signature verification.
                     </p>
-                    <div className="mt-3 flex items-center gap-1.5 text-[10px] text-emerald-600 font-semibold">
-                      <ShieldCheck className="w-3.5 h-3.5" />
-                      <span>Zero convenience fees</span>
+                    <div className="mt-3 flex items-center justify-between text-[10px]">
+                      <span className="text-emerald-600 font-semibold flex items-center gap-1">
+                        <ShieldCheck className="w-3.5 h-3.5" /> Zero fees
+                      </span>
+                      <span className="text-slate-400 font-mono">Key: rzp_test_...vP1Lf</span>
                     </div>
                   </div>
 
