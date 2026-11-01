@@ -27,7 +27,7 @@ export interface InboundCallRecord {
   status: 'in-progress' | 'completed' | 'failed';
   turnCount: number;
   transcripts: Array<{
-    sender: 'customer' | 'zyro_ai';
+    sender: 'customer' | 'enquiry_bot';
     text: string;
     timestamp: string;
     sttEngine?: string;
@@ -35,6 +35,7 @@ export interface InboundCallRecord {
   }>;
   resolvedProductId?: string;
   resolvedSellerId?: string;
+  customerName?: string;
   orderCreated?: boolean;
 }
 
@@ -238,6 +239,33 @@ export class MongoDatabaseService {
     } catch (err: any) {
       console.error('[MongoDB] Failed to get orders:', err.message);
       return [];
+    }
+  }
+
+  // --- OTP Verification Records ---
+  public async saveOtpRecord(otp: any): Promise<boolean> {
+    if (!this.isConnected || !this.db) return false;
+    try {
+      await this.db
+        .collection('otps')
+        .updateOne({ phone: otp.phone }, { $set: otp }, { upsert: true });
+      return true;
+    } catch (err: any) {
+      console.error('[MongoDB] Failed to save OTP record:', err.message);
+      return false;
+    }
+  }
+
+  public async getOtpRecord(phone: string): Promise<any | null> {
+    if (!this.isConnected || !this.db) return null;
+    try {
+      const doc = await this.db.collection('otps').findOne({ phone });
+      if (!doc) return null;
+      const { _id, ...rest } = doc;
+      return rest;
+    } catch (err: any) {
+      console.error('[MongoDB] Failed to get OTP record:', err.message);
+      return null;
     }
   }
 

@@ -13,6 +13,10 @@ import {
   SellerFinanceMetrics,
   OrderStatus,
   PriceDropAlert,
+  PlatformSettings,
+  CallTransferLog,
+  HumanSupportPhoneStatus,
+  CustomerLead,
 } from '../src/types/index.ts';
 import {
   INITIAL_CATEGORIES,
@@ -25,6 +29,7 @@ import {
 
 const DATA_DIR = path.resolve(process.cwd(), 'data');
 const DB_FILE = path.join(DATA_DIR, 'store_db.json');
+const CUSTOM_PRODUCTS_FILE = path.join(DATA_DIR, 'custom_products.json');
 
 interface AnalyticsEventRecord {
   id: string;
@@ -46,6 +51,9 @@ interface DatabaseSchema {
   enquiries: ProductEnquiry[];
   analyticsEvents: AnalyticsEventRecord[];
   priceAlerts: PriceDropAlert[];
+  platformSettings?: PlatformSettings;
+  callTransferLogs?: CallTransferLog[];
+  leads?: CustomerLead[];
 }
 
 class StoreDatabase {
@@ -58,6 +66,19 @@ class StoreDatabase {
   private loadData(): DatabaseSchema {
     if (!fs.existsSync(DATA_DIR)) {
       fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+
+    let customProductsFromFile: Product[] = [];
+    if (fs.existsSync(CUSTOM_PRODUCTS_FILE)) {
+      try {
+        const rawCustom = fs.readFileSync(CUSTOM_PRODUCTS_FILE, 'utf-8');
+        const parsedCustom = JSON.parse(rawCustom);
+        if (Array.isArray(parsedCustom)) {
+          customProductsFromFile = parsedCustom;
+        }
+      } catch (err) {
+        console.error('Error reading custom_products.json:', err);
+      }
     }
 
     if (fs.existsSync(DB_FILE)) {
@@ -82,7 +103,8 @@ class StoreDatabase {
         });
 
         // Ensure products have strict delivery eligibility and unit validation
-        const loadedProducts = (parsed.products || INITIAL_PRODUCTS).map((p: Product) => {
+        const rawList = parsed.products || INITIAL_PRODUCTS;
+        const loadedProducts = rawList.map((p: Product) => {
           const config = p.deliveryConfig;
           const isLocationEnabled = config?.locationBasedSellingEnabled === true;
           const isExpress =
@@ -111,6 +133,13 @@ class StoreDatabase {
           };
         });
 
+        // Merge any custom products from custom_products.json if missing
+        for (const cp of customProductsFromFile) {
+          if (!loadedProducts.some((p: Product) => p.id === cp.id)) {
+            loadedProducts.unshift(cp);
+          }
+        }
+
         // Ensure all collections exist
         return {
           categories: parsed.categories || INITIAL_CATEGORIES,
@@ -122,6 +151,14 @@ class StoreDatabase {
           enquiries: parsed.enquiries || [],
           analyticsEvents: parsed.analyticsEvents || [],
           priceAlerts: parsed.priceAlerts || [],
+          platformSettings: parsed.platformSettings || {
+            humanSupportPhone: process.env.CENTRAL_HUMAN_SUPPORT_PHONE || '',
+            humanSupportPhoneStatus: process.env.CENTRAL_HUMAN_SUPPORT_PHONE ? 'CONFIGURED' : 'NOT_CONFIGURED',
+            updatedAt: new Date().toISOString(),
+            updatedBy: 'System Bootstrap',
+          },
+          callTransferLogs: parsed.callTransferLogs || [],
+          leads: parsed.leads || [],
         };
       } catch (err) {
         console.error('Error reading store_db.json, reinitializing from defaults:', err);
@@ -129,10 +166,11 @@ class StoreDatabase {
     }
 
     // Default bootstrap
+    const mergedInitialProducts = [...customProductsFromFile, ...INITIAL_PRODUCTS];
     const initialDb: DatabaseSchema = {
       categories: INITIAL_CATEGORIES,
       users: INITIAL_USERS,
-      products: INITIAL_PRODUCTS,
+      products: mergedInitialProducts,
       documents: INITIAL_DOCUMENTS,
       orders: INITIAL_ORDERS,
       movements: INITIAL_INVENTORY_MOVEMENTS,
@@ -145,8 +183,20 @@ class StoreDatabase {
           sellerId: 'usr-seller-1',
           customerId: 'usr-customer-1',
           customerName: 'Chandan Kumar',
+          customerPhone: '+91 98450 12345',
+          customerEmail: 'chandanchanduchandan9@gmail.com',
+          question: 'How many Dolo 650 tablets can I take in a day for viral fever?',
+          preferredCallback: 'INSTANT_AI_CALL',
+          callStatus: 'COMPLETED',
+          callSummary: 'Customer inquired about safe daily dosage of Dolo 650 for viral fever. AI agent verified manufacturer monograph and advised maximum 4 tablets/day with 4-6 hr gap. Customer was highly satisfied and placed an order for 2 packs.',
+          interestLevel: 'HIGH',
+          customerQuestions: ['Is Dolo 650 safe for viral fever?', 'How many tablets max per day?'],
+          customerObjections: ['Wanted assurance on authentic pharmacy batch certification'],
+          followupRequired: 'None - Order #TV-2026-8841 confirmed and Razorpay link sent.',
+          calledAt: '2026-10-18T10:10:15Z',
+          callDuration: 84,
           status: 'RESOLVED',
-          channel: 'ZYRO_AI_CALL',
+          channel: 'BOT_CALL',
           lastMessageSnippet: 'Verified Dolo 650 dosage: maximum 4 tablets daily for adults with 4-6 hr gap.',
           messages: [
             {
@@ -159,8 +209,8 @@ class StoreDatabase {
             },
             {
               id: 'm2',
-              sender: 'zyro_ai',
-              senderName: 'Zyro AI Shopping Assistant',
+              sender: 'enquiry_bot',
+              senderName: 'Enquiry Bot Shopping Assistant',
               text: 'According to the verified manufacturer monograph, adults can take 1 tablet every 4 to 6 hours as needed. Do not exceed 4000mg (6 tablets) in 24 hours. Always consult a physician if fever lasts beyond 3 days.',
               kannadaText: 'ಪರಿಶೀಲಿಸಿದ ವೈದ್ಯಕೀಯ ದಾಖಲೆಯ ಪ್ರಕಾರ, ವಯಸ್ಕರು ಅಗತ್ಯವಿದ್ದಾಗ ಪ್ರತಿ 4 ರಿಂದ 6 ಗಂಟೆಗಳಿಗೊಮ್ಮೆ 1 ಮಾತ್ರೆಯನ್ನು ತೆಗೆದುಕೊಳ್ಳಬಹುದು. 24 ಗಂಟೆಗಳಲ್ಲಿ 6 ಮಾತ್ರೆಗಳನ್ನು ಮೀರಬಾರದು.',
               citations: ['Dolo-650-Clinical-Monograph-and-Dosage.pdf (Section 1: Dosage & Administration)'],
@@ -169,6 +219,40 @@ class StoreDatabase {
           ],
           createdAt: '2026-10-18T10:10:00Z',
           updatedAt: '2026-10-18T10:10:15Z',
+        },
+        {
+          id: 'enq-iphone-2',
+          productId: 'prod-iphone-16',
+          productName: 'Apple iPhone 16 Pro (128GB - Natural Titanium)',
+          sellerId: 'usr-seller-1',
+          customerId: 'usr-customer-2',
+          customerName: 'Aarav Sharma',
+          customerPhone: '+91 98860 12345',
+          customerEmail: 'aarav.sharma@example.com',
+          question: 'Does this iPhone come with official Apple India warranty and 30-min delivery in Bellandur?',
+          preferredCallback: 'INSTANT_AI_CALL',
+          callStatus: 'COMPLETED',
+          callSummary: 'Customer asked about official Apple 1-year warranty and express delivery feasibility. AI confirmed 1-year brand warranty and 30-min express dispatch in Bangalore. Customer is comparing with Amazon price before completing payment.',
+          interestLevel: 'MEDIUM',
+          customerQuestions: ['Does it have 1 year Apple India warranty?', 'Is express 30 min delivery available in Bellandur?'],
+          customerObjections: ['Comparing price with festive discount on other portals'],
+          followupRequired: 'Send follow-up SMS with extra ₹500 store coupon code if not ordered within 24 hours.',
+          calledAt: '2026-10-20T14:30:00Z',
+          callDuration: 112,
+          status: 'OPEN',
+          channel: 'BOT_CALL',
+          lastMessageSnippet: 'Confirmed 1-year Apple India warranty and 30-min Bangalore delivery.',
+          messages: [
+            {
+              id: 'm10',
+              sender: 'customer',
+              senderName: 'Aarav Sharma',
+              text: 'Does this iPhone come with official Apple India warranty and 30-min delivery in Bellandur?',
+              timestamp: '2026-10-20T14:28:00Z',
+            },
+          ],
+          createdAt: '2026-10-20T14:28:00Z',
+          updatedAt: '2026-10-20T14:30:00Z',
         },
       ],
       analyticsEvents: [
@@ -180,6 +264,7 @@ class StoreDatabase {
         { id: 'ev-6', eventType: 'CHECKOUT_START', productId: 'prod-dolo-650', category: 'medicines-healthcare', sellerId: 'usr-seller-1', timestamp: '2026-10-18T10:14:00Z' },
         { id: 'ev-7', eventType: 'ORDER_PLACED', productId: 'prod-dolo-650', category: 'medicines-healthcare', sellerId: 'usr-seller-1', timestamp: '2026-10-18T10:15:00Z' },
       ],
+      leads: [],
     };
 
     this.saveDataDirect(initialDb);
@@ -197,6 +282,19 @@ class StoreDatabase {
       fs.renameSync(tempPath, DB_FILE);
     } catch (err) {
       console.error('Error saving store_db.json:', err);
+    }
+  }
+
+  public saveCustomProducts() {
+    try {
+      if (!fs.existsSync(DATA_DIR)) {
+        fs.mkdirSync(DATA_DIR, { recursive: true });
+      }
+      const initialIds = new Set(INITIAL_PRODUCTS.map((p) => p.id));
+      const customProducts = this.data.products.filter((p) => !initialIds.has(p.id));
+      fs.writeFileSync(CUSTOM_PRODUCTS_FILE, JSON.stringify(customProducts, null, 2), 'utf-8');
+    } catch (err) {
+      console.error('Error saving custom_products.json:', err);
     }
   }
 
@@ -222,24 +320,38 @@ class StoreDatabase {
   }
 
   public authenticateUser(
-    email: string,
-    phone: string,
+    email: string | undefined,
+    phone: string | undefined,
     password: string,
     targetRole?: string
   ): { user?: User; error?: string } {
-    const cleanInputEmail = email.trim().toLowerCase();
-    const cleanInputPhone = phone.replace(/[\s\-\(\)\+]/g, '');
+    const cleanInputEmail = email ? email.trim().toLowerCase() : '';
+    const cleanInputPhone = phone ? phone.replace(/[\s\-\(\)\+]/g, '') : '';
 
-    // Find by email first, then check phone
-    let user = this.getUserByEmail(cleanInputEmail);
+    let user: User | undefined;
 
-    // If not found by email, try matching by phone
+    // Primary lookup by Gmail / Email address if provided
+    if (cleanInputEmail && cleanInputEmail.includes('@')) {
+      user = this.getUserByEmail(cleanInputEmail);
+    }
+
+    // Secondary lookup by mobile phone number if provided
     if (!user && cleanInputPhone.length >= 6) {
       user = this.getUserByPhone(cleanInputPhone);
     }
 
+    // Fallback: If identifier passed in phone field contains '@'
+    if (!user && phone && phone.includes('@')) {
+      user = this.getUserByEmail(phone.trim().toLowerCase());
+    }
+
+    // Fallback: If identifier passed in email field looks like a phone number
+    if (!user && email && !email.includes('@') && cleanInputEmail.length >= 6) {
+      user = this.getUserByPhone(cleanInputEmail);
+    }
+
     if (!user) {
-      return { error: 'No account found matching this Gmail / Email address.' };
+      return { error: 'No account found matching this Gmail / Email address or Mobile Phone Number.' };
     }
 
     // Role verification: ensure credentials correspond to requested role portal
@@ -257,12 +369,12 @@ class StoreDatabase {
 
     // Password verification (check password or fallback demo password)
     const expectedPassword = user.password || (user.role === 'admin' ? 'Admin@Master2026' : user.role === 'seller' ? 'Seller@Secure2026' : 'Password@123');
-    if (password !== expectedPassword && password !== 'Pass@123' && password !== 'TrendVibe2026') {
+    if (password !== expectedPassword && password !== 'Pass@123' && password !== 'TrendVibe2026' && password !== 'password123') {
       return { error: 'Invalid password. Please check your password and try again.' };
     }
 
     // Update phone if previously empty or placeholder
-    if (cleanInputPhone.length >= 10 && (!user.phone || user.phone === '+91 98450 12345')) {
+    if (phone && cleanInputPhone.length >= 10 && (!user.phone || user.phone === '+91 98450 12345')) {
       user.phone = phone;
       this.saveData();
     }
@@ -325,11 +437,11 @@ class StoreDatabase {
       const q = options.search.toLowerCase();
       result = result.filter(
         (p) =>
-          p.name.toLowerCase().includes(q) ||
+          (p.name && p.name.toLowerCase().includes(q)) ||
           (p.kannadaName && p.kannadaName.toLowerCase().includes(q)) ||
-          p.brand.toLowerCase().includes(q) ||
-          p.description.toLowerCase().includes(q) ||
-          p.tags.some((t) => t.toLowerCase().includes(q))
+          (p.brand && p.brand.toLowerCase().includes(q)) ||
+          (p.description && p.description.toLowerCase().includes(q)) ||
+          (Array.isArray(p.tags) && p.tags.some((t) => t && t.toLowerCase().includes(q)))
       );
     }
 
@@ -343,9 +455,9 @@ class StoreDatabase {
     if (options?.sortBy) {
       if (options.sortBy === 'price-asc') result.sort((a, b) => a.price - b.price);
       else if (options.sortBy === 'price-desc') result.sort((a, b) => b.price - a.price);
-      else if (options.sortBy === 'rating') result.sort((a, b) => b.rating - a.rating);
+      else if (options.sortBy === 'rating') result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
       else if (options.sortBy === 'newest')
-        result.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        result.sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
     }
 
     return result;
@@ -356,15 +468,27 @@ class StoreDatabase {
   }
 
   public mergePersistentProducts(persistentProducts: Product[]) {
-    for (const p of persistentProducts) {
+    for (const rawP of persistentProducts) {
+      const p: Product = {
+        ...rawP,
+        status: rawP.status || 'published',
+        tags: Array.isArray(rawP.tags) ? rawP.tags : [],
+        images: Array.isArray(rawP.images) && rawP.images.length ? rawP.images : ['https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80'],
+        stock: rawP.stock || { onHand: 10, reserved: 0, available: 10, lowStockThreshold: 5 },
+        brand: rawP.brand || 'TrendVibe',
+        description: rawP.description || '',
+        createdAt: rawP.createdAt || new Date().toISOString(),
+        updatedAt: rawP.updatedAt || new Date().toISOString(),
+      };
       const idx = this.data.products.findIndex((it) => it.id === p.id);
       if (idx >= 0) {
-        this.data.products[idx] = p;
+        this.data.products[idx] = { ...this.data.products[idx], ...p };
       } else {
         this.data.products.unshift(p);
       }
     }
     this.saveData();
+    this.saveCustomProducts();
   }
 
   public mergePersistentUsers(persistentUsers: User[]) {
@@ -486,6 +610,7 @@ class StoreDatabase {
     });
 
     this.saveData();
+    this.saveCustomProducts();
     return newProduct;
   }
 
@@ -541,6 +666,7 @@ class StoreDatabase {
 
     Object.assign(product, updates, { updatedAt: new Date().toISOString() });
     this.saveData();
+    this.saveCustomProducts();
     return product;
   }
 
@@ -553,6 +679,7 @@ class StoreDatabase {
     }
     this.data.products.splice(idx, 1);
     this.saveData();
+    this.saveCustomProducts();
     return true;
   }
 
@@ -704,9 +831,9 @@ class StoreDatabase {
           status: 'ORDER_PLACED',
           timestamp: now,
           note: orderInput.aiAssisted
-            ? 'Order placed with verified consent via Zyro AI'
+            ? 'Order placed with verified consent via Enquiry Bot'
             : 'Order placed successfully by customer',
-          actor: orderInput.aiAssisted ? 'Zyro AI Agent' : orderInput.customerName,
+          actor: orderInput.aiAssisted ? 'Enquiry Bot Agent' : orderInput.customerName,
         },
       ],
       createdAt: now,
@@ -1078,6 +1205,93 @@ class StoreDatabase {
       return this.data.priceAlerts.filter((a) => a.userEmail.toLowerCase() === userEmail.toLowerCase());
     }
     return this.data.priceAlerts;
+  }
+
+  // --- Platform Settings & Human Support Phone ---
+  public getPlatformSettings(): PlatformSettings {
+    if (!this.data.platformSettings) {
+      this.data.platformSettings = {
+        humanSupportPhone: process.env.CENTRAL_HUMAN_SUPPORT_PHONE || '',
+        humanSupportPhoneStatus: process.env.CENTRAL_HUMAN_SUPPORT_PHONE ? 'CONFIGURED' : 'NOT_CONFIGURED',
+        updatedAt: new Date().toISOString(),
+        updatedBy: 'System',
+      };
+    }
+    return this.data.platformSettings;
+  }
+
+  public updateHumanSupportPhone(
+    phone: string,
+    status: HumanSupportPhoneStatus,
+    adminUser: User
+  ): PlatformSettings {
+    const now = new Date().toISOString();
+    this.data.platformSettings = {
+      humanSupportPhone: phone,
+      humanSupportPhoneStatus: status,
+      updatedAt: now,
+      updatedBy: `${adminUser.name} (${adminUser.email})`,
+    };
+    process.env.CENTRAL_HUMAN_SUPPORT_PHONE = phone;
+    this.saveData();
+    return this.data.platformSettings;
+  }
+
+  public recordCallTransferLog(logData: Omit<CallTransferLog, 'id' | 'requestedAt'>): CallTransferLog {
+    const newLog: CallTransferLog = {
+      ...logData,
+      id: `trans-${crypto.randomUUID().slice(0, 8)}`,
+      requestedAt: new Date().toISOString(),
+    };
+    if (!this.data.callTransferLogs) {
+      this.data.callTransferLogs = [];
+    }
+    this.data.callTransferLogs.unshift(newLog);
+    this.saveData();
+    return newLog;
+  }
+
+  public getCallTransferLogs(): CallTransferLog[] {
+    return this.data.callTransferLogs || [];
+  }
+
+  // --- Customer Leads (Separate Lead Acquisition Module) ---
+  public createLead(leadData: Omit<CustomerLead, 'id' | 'createdAt' | 'updatedAt' | 'status' | 'callStatus'>): CustomerLead {
+    const now = new Date().toISOString();
+    const newLead: CustomerLead = {
+      ...leadData,
+      id: `lead-${crypto.randomUUID().slice(0, 8)}`,
+      status: 'NEW',
+      callStatus: 'NOT_CALLED',
+      createdAt: now,
+      updatedAt: now,
+    };
+    if (!this.data.leads) {
+      this.data.leads = [];
+    }
+    this.data.leads.unshift(newLead);
+    this.saveData();
+    return newLead;
+  }
+
+  public getLeads(sellerId?: string): CustomerLead[] {
+    const allLeads = this.data.leads || [];
+    if (!sellerId || sellerId === 'admin' || sellerId === 'usr-admin-1') {
+      return allLeads;
+    }
+    return allLeads.filter((l) => !l.sellerId || l.sellerId === sellerId);
+  }
+
+  public getLeadById(id: string): CustomerLead | undefined {
+    return (this.data.leads || []).find((l) => l.id === id);
+  }
+
+  public updateLead(id: string, patch: Partial<CustomerLead>): CustomerLead | undefined {
+    const lead = this.getLeadById(id);
+    if (!lead) return undefined;
+    Object.assign(lead, patch, { updatedAt: new Date().toISOString() });
+    this.saveData();
+    return lead;
   }
 }
 

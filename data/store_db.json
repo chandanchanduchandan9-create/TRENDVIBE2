@@ -232,6 +232,223 @@
   ],
   "products": [
     {
+      "id": "prod-5e7d69ff",
+      "name": "i phone",
+      "kannadaName": "",
+      "slug": "i-phone",
+      "brand": "cbr seller",
+      "category": "medicines-healthcare",
+      "subcategory": "Fever & Cold",
+      "description": "",
+      "shortDescription": "",
+      "mrp": 100,
+      "price": 50000,
+      "discountPercent": -49900,
+      "costPrice": 4998,
+      "sku": "SKU-221305",
+      "images": [
+        "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80"
+      ],
+      "variants": [],
+      "specifications": {},
+      "tags": [],
+      "stock": {
+        "onHand": 50,
+        "reserved": 0,
+        "available": 50,
+        "lowStockThreshold": 10
+      },
+      "sellerId": "usr-3dba0881",
+      "sellerName": "cbr seller",
+      "instagramUrl": "",
+      "officialSourceUrl": "",
+      "pdfDocName": "",
+      "pdfDocUrl": "",
+      "pdfExtractedText": "",
+      "lastVerifiedDate": "2026-10-31",
+      "isVerifiedInfo": true,
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece",
+      "deliveryConfig": {
+        "supportsExpress30Min": false,
+        "locationBasedSellingEnabled": false,
+        "deliverySpeed": "standard",
+        "preparationMinutes": 15,
+        "standardDeliveryDays": 2,
+        "shippingFee": 25,
+        "freeShippingAbove": 499,
+        "returnPolicyDays": 7,
+        "serviceablePincodes": [
+          "560001",
+          "560038",
+          "560103",
+          "560068",
+          "560034"
+        ],
+        "serviceCity": "Bangalore",
+        "quickDeliveryCharge": 40
+      },
+      "status": "published",
+      "rating": 5,
+      "reviewCount": 1,
+      "createdAt": "2026-10-31T05:24:12.385Z",
+      "updatedAt": "2026-10-31T05:24:12.385Z"
+    },
+    {
+      "id": "prod-client-test-1",
+      "name": "Client Synced Item",
+      "price": 99,
+      "category": "food-beverages",
+      "brand": "Fresh Farm",
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece",
+      "deliveryConfig": {
+        "supportsExpress30Min": false,
+        "preparationMinutes": 15,
+        "standardDeliveryDays": 2,
+        "shippingFee": 25,
+        "freeShippingAbove": 499,
+        "returnPolicyDays": 7,
+        "serviceablePincodes": [
+          "560001",
+          "560038",
+          "560103",
+          "560068",
+          "560034"
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
+      }
+    },
+    {
+      "id": "prod-ac09036f",
+      "name": "Permanent Ayurvedic Ashwagandha",
+      "kannadaName": "",
+      "slug": "permanent-ayurvedic-ashwagandha",
+      "brand": "Organic Vibe",
+      "category": "medicines-healthcare",
+      "subcategory": "General",
+      "description": "",
+      "shortDescription": "",
+      "mrp": 499,
+      "price": 350,
+      "discountPercent": 30,
+      "costPrice": 244.99999999999997,
+      "sku": "SKU-638881",
+      "images": [
+        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"
+      ],
+      "variants": [],
+      "specifications": {},
+      "tags": [],
+      "stock": {
+        "onHand": 10,
+        "reserved": 0,
+        "available": 10,
+        "lowStockThreshold": 5
+      },
+      "sellerId": "usr-seller-1",
+      "sellerName": "TrendVibe Central Hub & HealthMart",
+      "instagramUrl": "",
+      "officialSourceUrl": "",
+      "pdfDocName": "",
+      "pdfDocUrl": "",
+      "pdfExtractedText": "",
+      "lastVerifiedDate": "2026-10-30",
+      "isVerifiedInfo": false,
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece",
+      "deliveryConfig": {
+        "supportsExpress30Min": false,
+        "preparationMinutes": 15,
+        "standardDeliveryDays": 2,
+        "shippingFee": 25,
+        "freeShippingAbove": 499,
+        "returnPolicyDays": 7,
+        "serviceablePincodes": [
+          "560001",
+          "560038",
+          "560103",
+          "560068",
+          "560034"
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
+      },
+      "status": "published",
+      "rating": 5,
+      "reviewCount": 1,
+      "createdAt": "2026-10-30T08:40:38.880Z",
+      "updatedAt": "2026-10-30T08:40:38.880Z"
+    },
+    {
+      "id": "prod-1977e068",
+      "name": "Persistent Herbal Cold Balm",
+      "kannadaName": "",
+      "slug": "persistent-herbal-cold-balm",
+      "brand": "Vibe Herbal",
+      "category": "medicines-healthcare",
+      "subcategory": "General",
+      "description": "",
+      "shortDescription": "",
+      "mrp": 150,
+      "price": 120,
+      "discountPercent": 20,
+      "costPrice": 84,
+      "sku": "SKU-617813",
+      "images": [
+        "https://images.unsplash.com/photo-1523275335684-37898b6baf30?auto=format&fit=crop&w=800&q=80"
+      ],
+      "variants": [],
+      "specifications": {},
+      "tags": [],
+      "stock": {
+        "onHand": 10,
+        "reserved": 0,
+        "available": 10,
+        "lowStockThreshold": 5
+      },
+      "sellerId": "usr-seller-1",
+      "sellerName": "TrendVibe Central Hub & HealthMart",
+      "instagramUrl": "",
+      "officialSourceUrl": "",
+      "pdfDocName": "",
+      "pdfDocUrl": "",
+      "pdfExtractedText": "",
+      "lastVerifiedDate": "2026-10-30",
+      "isVerifiedInfo": false,
+      "minOrderQuantity": 1,
+      "sellingUnit": "piece",
+      "deliveryConfig": {
+        "supportsExpress30Min": false,
+        "preparationMinutes": 15,
+        "standardDeliveryDays": 2,
+        "shippingFee": 25,
+        "freeShippingAbove": 499,
+        "returnPolicyDays": 7,
+        "serviceablePincodes": [
+          "560001",
+          "560038",
+          "560103",
+          "560068",
+          "560034"
+        ],
+        "locationBasedSellingEnabled": false,
+        "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
+        "quickDeliveryCharge": 40
+      },
+      "status": "published",
+      "rating": 5,
+      "reviewCount": 1,
+      "createdAt": "2026-10-30T08:40:17.813Z",
+      "updatedAt": "2026-10-30T08:40:17.813Z"
+    },
+    {
       "id": "prod-c276df8c",
       "name": "Test Seller Product 1",
       "kannadaName": "",
@@ -271,8 +488,6 @@
       "sellingUnit": "piece",
       "deliveryConfig": {
         "supportsExpress30Min": false,
-        "locationBasedSellingEnabled": false,
-        "deliverySpeed": "standard",
         "preparationMinutes": 15,
         "standardDeliveryDays": 2,
         "shippingFee": 25,
@@ -285,7 +500,9 @@
           "560068",
           "560034"
         ],
+        "locationBasedSellingEnabled": false,
         "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
         "quickDeliveryCharge": 40
       },
       "status": "published",
@@ -1023,9 +1240,9 @@
         "no maida"
       ],
       "stock": {
-        "onHand": 35,
+        "onHand": 33,
         "reserved": 1,
-        "available": 34,
+        "available": 32,
         "lowStockThreshold": 8
       },
       "sellerId": "usr-seller-1",
@@ -2950,6 +3167,134 @@
   ],
   "orders": [
     {
+      "id": "ord-4c6d1702",
+      "orderNumber": "TV-2026-1806",
+      "customerId": "usr-customer-1",
+      "customerName": "Chandan Kumar",
+      "customerEmail": "chandanchanduchandan9@gmail.com",
+      "customerPhone": "+91 98450 12345",
+      "shippingAddress": {
+        "id": "addr-1",
+        "name": "Chandan Kumar",
+        "phone": "+91 98450 12345",
+        "street": "Flat 402, Green Glen Heights, Bellandur Outer Ring Road",
+        "city": "Bangalore",
+        "state": "Karnataka",
+        "pincode": "560103",
+        "landmark": "Near EcoSpace Tech Park",
+        "isDefault": true
+      },
+      "items": [
+        {
+          "productId": "prod-oats-pancake",
+          "productName": "Oats Banana Pancake (Stack of 3 with Organic Honey)",
+          "sku": "FOOD-OATS-PANCK-3P",
+          "price": 120,
+          "mrp": 140,
+          "quantity": 2,
+          "image": "https://images.unsplash.com/photo-1528207776546-365bb710ee93?auto=format&fit=crop&w=800&q=80",
+          "category": "food",
+          "sellerId": "usr-seller-1",
+          "sellerName": "TrendVibe Central Hub & HealthMart"
+        }
+      ],
+      "subtotal": 240,
+      "discount": 0,
+      "tax": 12,
+      "shippingFee": 25,
+      "totalAmount": 277,
+      "paymentMethod": "COD",
+      "paymentStatus": "PENDING",
+      "orderStatus": "ORDER_PLACED",
+      "isExpress30Min": false,
+      "estimatedDeliveryTime": "Tomorrow, by 8:00 PM",
+      "aiAssisted": false,
+      "timeline": [
+        {
+          "status": "ORDER_PLACED",
+          "timestamp": "2026-11-01T06:06:36.085Z",
+          "note": "Order placed successfully by customer",
+          "actor": "Chandan Kumar"
+        }
+      ],
+      "createdAt": "2026-11-01T06:06:36.085Z",
+      "updatedAt": "2026-11-01T06:06:36.085Z"
+    },
+    {
+      "id": "ord-bb04ceec",
+      "orderNumber": "TV-2026-5480",
+      "customerId": "usr-customer-1",
+      "customerName": "Chandan Kumar",
+      "customerEmail": "chandanchanduchandan9@gmail.com",
+      "customerPhone": "+91 98450 12345",
+      "shippingAddress": {
+        "id": "addr-1",
+        "name": "Chandan Kumar",
+        "phone": "+91 98450 12345",
+        "street": "Flat 402, Green Glen Heights, Bellandur Outer Ring Road",
+        "city": "Bangalore",
+        "state": "Karnataka",
+        "pincode": "560103",
+        "landmark": "Near EcoSpace Tech Park",
+        "isDefault": true
+      },
+      "items": [
+        {
+          "productId": "prod-5e7d69ff",
+          "productName": "i phone",
+          "sku": "SKU-221305",
+          "price": 50000,
+          "mrp": 100,
+          "quantity": 1,
+          "image": "https://images.unsplash.com/photo-1584308666744-24d5c474f2ae?auto=format&fit=crop&w=800&q=80",
+          "category": "medicines-healthcare",
+          "sellerId": "usr-3dba0881",
+          "sellerName": "cbr seller"
+        }
+      ],
+      "subtotal": 50000,
+      "discount": 50,
+      "tax": 2500,
+      "shippingFee": 0,
+      "totalAmount": 52450,
+      "paymentMethod": "ONLINE_RAZORPAY",
+      "paymentStatus": "REFUNDED",
+      "paymentId": "pay_rzp_81f2fc7d-6",
+      "orderStatus": "CANCELLED",
+      "isExpress30Min": false,
+      "estimatedDeliveryTime": "Tomorrow, by 8:00 PM",
+      "aiAssisted": false,
+      "timeline": [
+        {
+          "status": "ORDER_PLACED",
+          "timestamp": "2026-11-01T05:54:39.193Z",
+          "note": "Order placed successfully by customer",
+          "actor": "Chandan Kumar"
+        },
+        {
+          "status": "ACCEPTED",
+          "timestamp": "2026-11-01T06:04:09.241Z",
+          "note": "Customer Dashboard Simulator: Advanced order to ACCEPTED",
+          "actor": "Chandan Kumar"
+        },
+        {
+          "status": "CANCELLED",
+          "timestamp": "2026-11-01T06:05:44.858Z",
+          "note": "Order cancelled by customer. Stock restored to inventory.",
+          "actor": "Chandan Kumar"
+        },
+        {
+          "status": "CANCELLED",
+          "timestamp": "2026-11-01T06:05:50.262Z",
+          "note": "Order cancelled by customer. Stock restored to inventory.",
+          "actor": "Chandan Kumar"
+        }
+      ],
+      "createdAt": "2026-11-01T05:54:39.193Z",
+      "updatedAt": "2026-11-01T06:05:50.262Z",
+      "razorpayOrderId": "order_TunqDEsWchoryZ"
+    },
+    {
       "id": "ord-47eb2e56",
       "orderNumber": "TV-2026-1062",
       "customerId": "usr-customer-1",
@@ -2985,7 +3330,7 @@
       "paymentMethod": "ONLINE_RAZORPAY",
       "paymentStatus": "PAID",
       "paymentId": "pay_rzp_fb34c297-8",
-      "orderStatus": "ORDER_PLACED",
+      "orderStatus": "OUT_FOR_DELIVERY",
       "isExpress30Min": false,
       "estimatedDeliveryTime": "Tomorrow, by 8:00 PM",
       "aiAssisted": false,
@@ -2995,10 +3340,16 @@
           "timestamp": "2026-10-29T13:54:55.263Z",
           "note": "Order placed successfully by customer",
           "actor": "Chandan Kumar"
+        },
+        {
+          "status": "OUT_FOR_DELIVERY",
+          "timestamp": "2026-11-01T06:04:55.852Z",
+          "note": "Seller updated status to OUT_FOR_DELIVERY",
+          "actor": "Priya Sharma"
         }
       ],
       "createdAt": "2026-10-29T13:54:55.263Z",
-      "updatedAt": "2026-10-29T13:54:55.263Z"
+      "updatedAt": "2026-11-01T06:04:55.852Z"
     },
     {
       "id": "ord-tv-8841",
@@ -3079,14 +3430,14 @@
         {
           "status": "READY_FOR_DISPATCH",
           "timestamp": "2026-10-18T10:22:00Z",
-          "note": "Assigned to Express Electric Rider #EV-42 (Kiran M.)",
+          "note": "Assigned to Express Rider Ramesh Kumar (Scooter KA 01 EV 4821 • Phone: +91 90193 63368)",
           "actor": "Automated Dispatch"
         },
         {
           "status": "OUT_FOR_DELIVERY",
           "timestamp": "2026-10-18T10:25:00Z",
-          "note": "Rider is 1.4 km away on Bellandur ORR approaching Green Glen Heights",
-          "actor": "Delivery Partner"
+          "note": "Ramesh Kumar (+91 90193 63368) is 1.4 km away on Scooter KA 01 EV 4821 approaching Green Glen Heights",
+          "actor": "Rider Ramesh Kumar"
         }
       ],
       "createdAt": "2026-10-18T10:15:00Z",
@@ -3275,9 +3626,143 @@
       "note": "Product created with initial stock",
       "id": "mov-d3a12d1e",
       "timestamp": "2026-10-29T14:09:03.744Z"
+    },
+    {
+      "productId": "prod-1977e068",
+      "productName": "Persistent Herbal Cold Balm",
+      "sku": "SKU-617813",
+      "type": "INITIAL_STOCK",
+      "delta": 10,
+      "previousAvailable": 0,
+      "newAvailable": 10,
+      "actor": "Priya Sharma",
+      "note": "Product created with initial stock",
+      "id": "mov-5eb71f64",
+      "timestamp": "2026-10-30T08:40:17.813Z"
+    },
+    {
+      "productId": "prod-ac09036f",
+      "productName": "Permanent Ayurvedic Ashwagandha",
+      "sku": "SKU-638881",
+      "type": "INITIAL_STOCK",
+      "delta": 10,
+      "previousAvailable": 0,
+      "newAvailable": 10,
+      "actor": "Priya Sharma",
+      "note": "Product created with initial stock",
+      "id": "mov-e2d14517",
+      "timestamp": "2026-10-30T08:40:38.881Z"
+    },
+    {
+      "productId": "prod-5e7d69ff",
+      "productName": "i phone",
+      "sku": "SKU-221305",
+      "type": "ORDER_COMMITTED",
+      "delta": -1,
+      "previousAvailable": 50,
+      "newAvailable": 49,
+      "actor": "Order Checkout",
+      "orderId": "ord-bb04ceec",
+      "note": "Committed 1 units for Order #TV-2026-5480",
+      "id": "mov-b0ee4a5a",
+      "timestamp": "2026-11-01T05:54:39.193Z"
+    },
+    {
+      "productId": "prod-5e7d69ff",
+      "productName": "i phone",
+      "sku": "SKU-221305",
+      "type": "ORDER_CANCELLED_RESTOCKED",
+      "delta": 1,
+      "previousAvailable": 49,
+      "newAvailable": 50,
+      "actor": "Chandan Kumar",
+      "orderId": "ord-bb04ceec",
+      "note": "Restocked 1 units due to Order #TV-2026-5480 cancellation",
+      "id": "mov-be2bfdf0",
+      "timestamp": "2026-11-01T06:05:44.859Z"
+    },
+    {
+      "productId": "prod-oats-pancake",
+      "productName": "Oats Banana Pancake (Stack of 3 with Organic Honey)",
+      "sku": "FOOD-OATS-PANCK-3P",
+      "type": "ORDER_COMMITTED",
+      "delta": -2,
+      "previousAvailable": 34,
+      "newAvailable": 32,
+      "actor": "Order Checkout",
+      "orderId": "ord-4c6d1702",
+      "note": "Committed 2 units for Order #TV-2026-1806",
+      "id": "mov-fbc232f1",
+      "timestamp": "2026-11-01T06:06:36.085Z"
     }
   ],
   "enquiries": [
+    {
+      "productId": "prod-dolo-650",
+      "productName": "Dolo 650 Tablet",
+      "sellerId": "usr-seller-1",
+      "customerId": "usr-customer-1",
+      "customerName": "Test Customer",
+      "customerPhone": "+91 98450 11111",
+      "customerEmail": "test@example.com",
+      "question": "Is this available for delivery today?",
+      "callStatus": "PENDING",
+      "status": "OPEN",
+      "channel": "FORM_ENQUIRY",
+      "lastMessageSnippet": "Is this available for delivery today?",
+      "messages": [
+        {
+          "id": "msg-1793512955680",
+          "sender": "customer",
+          "senderName": "Test Customer",
+          "text": "Is this available for delivery today?",
+          "timestamp": "2026-11-01T06:02:35.680Z"
+        }
+      ],
+      "id": "enq-351579a1",
+      "createdAt": "2026-11-01T06:02:35.680Z",
+      "updatedAt": "2026-11-01T06:02:35.680Z"
+    },
+    {
+      "productId": "prod-dolo-650",
+      "productName": "Dolo 650 Tablet",
+      "sellerId": "usr-seller-1",
+      "customerId": "usr-customer-1",
+      "customerName": "Test Customer",
+      "customerPhone": "+91 98450 11111",
+      "customerEmail": "test@example.com",
+      "question": "Is this available for delivery today?",
+      "preferredCallback": "INSTANT_AI_CALL",
+      "callStatus": "COMPLETED",
+      "status": "OPEN",
+      "channel": "FORM_ENQUIRY",
+      "lastMessageSnippet": "Is this available for delivery today?",
+      "messages": [
+        {
+          "id": "msg-1793512940743",
+          "sender": "customer",
+          "senderName": "Test Customer",
+          "text": "Is this available for delivery today?",
+          "timestamp": "2026-11-01T06:02:20.743Z"
+        }
+      ],
+      "id": "enq-ca3da91d",
+      "createdAt": "2026-11-01T06:02:20.743Z",
+      "updatedAt": "2026-11-01T06:02:22.245Z",
+      "callSummary": "Customer Test Customer submitted enquiry: \"Is this available for delivery today?\" for Dolo 650 Tablet. AI Voice Agent connected via Twilio. Answered product specs, verified stock (143 units), and confirmed pricing (₹30). Customer expressed strong interest in ordering.",
+      "interestLevel": "HIGH",
+      "customerQuestions": [
+        "Is this available for delivery today?",
+        "Is stock available for immediate dispatch?"
+      ],
+      "customerObjections": [
+        "Verified return policy and warranty"
+      ],
+      "followupRequired": "Send Razorpay payment link or follow-up SMS",
+      "calledAt": "2026-11-01T06:02:22.245Z",
+      "callDuration": 68,
+      "callSid": "CA-TWILIO-MVXFAR39"
+    },
     {
       "id": "enq-dolo-1",
       "productId": "prod-dolo-650",
@@ -3310,7 +3795,57 @@
         }
       ],
       "createdAt": "2026-10-18T10:10:00Z",
-      "updatedAt": "2026-10-18T10:10:15Z"
+      "updatedAt": "2026-11-01T05:51:18.887Z",
+      "callStatus": "COMPLETED",
+      "callSummary": "[HUMAN ESCALATED] AI Agent handed off call to live seller agent. Reason: Customer requested live seller representative",
+      "interestLevel": "HIGH",
+      "customerQuestions": [
+        "Verified Dolo 650 dosage: maximum 4 tablets daily for adults with 4-6 hr gap.",
+        "Is stock available for instant Bangalore delivery?"
+      ],
+      "customerObjections": [
+        "Checked competitor pricing & verified 7-day return policy"
+      ],
+      "followupRequired": "Follow up with Razorpay checkout link via SMS/WhatsApp.",
+      "calledAt": "2026-11-01T05:50:45.344Z",
+      "callDuration": 78,
+      "callSid": "CA-OUTBOUND-MVXEVTCW",
+      "googleSheetsSynced": true,
+      "googleSheetsRowUrl": "https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0",
+      "transcript": [
+        {
+          "speaker": "AI Agent (ElevenLabs)",
+          "text": "Hello Chandan Kumar! Calling from TrendVibe Central Hub & HealthMart regarding your enquiry about Dolo 650 Tablet (Paracetamol 650mg).",
+          "timestamp": "00:02"
+        },
+        {
+          "speaker": "Customer",
+          "text": "Is this genuine and when will it deliver?",
+          "timestamp": "00:08"
+        },
+        {
+          "speaker": "AI Agent (Gemini RAG)",
+          "text": "Yes, Dolo 650 Tablet (Paracetamol 650mg) is 100% verified original with 1-year manufacturer warranty. We can deliver in 30 minutes in Bangalore!",
+          "timestamp": "00:15"
+        },
+        {
+          "speaker": "Customer",
+          "text": "Great! Please text me the order payment link.",
+          "timestamp": "00:25"
+        },
+        {
+          "speaker": "AI Agent (ElevenLabs)",
+          "text": "Sending you the link via SMS now. Thank you for choosing TrendVibe Store!",
+          "timestamp": "00:32"
+        },
+        {
+          "speaker": "AI Agent (System)",
+          "text": "Transferring call to live seller representative. Reason: Customer requested live seller representative",
+          "timestamp": "05:51 AM"
+        }
+      ],
+      "humanTransferRequested": true,
+      "transferReason": "Customer requested live seller representative"
     }
   ],
   "analyticsEvents": [
@@ -3380,6 +3915,28 @@
       },
       "id": "ev-93466137",
       "timestamp": "2026-10-29T13:54:55.263Z"
+    },
+    {
+      "eventType": "ORDER_PLACED",
+      "sellerId": "usr-3dba0881",
+      "metadata": {
+        "orderId": "ord-bb04ceec",
+        "totalAmount": 52450,
+        "itemsCount": 1
+      },
+      "id": "ev-dd0ec3c5",
+      "timestamp": "2026-11-01T05:54:39.193Z"
+    },
+    {
+      "eventType": "ORDER_PLACED",
+      "sellerId": "usr-seller-1",
+      "metadata": {
+        "orderId": "ord-4c6d1702",
+        "totalAmount": 277,
+        "itemsCount": 1
+      },
+      "id": "ev-d2cea3f9",
+      "timestamp": "2026-11-01T06:06:36.085Z"
     }
   ],
   "priceAlerts": [
@@ -3392,6 +3949,33 @@
       "id": "alert-2bece722",
       "createdAt": "2026-10-26T17:09:35.682Z",
       "status": "active"
+    }
+  ],
+  "platformSettings": {
+    "humanSupportPhone": "",
+    "humanSupportPhoneStatus": "NOT_CONFIGURED",
+    "updatedAt": "2026-11-01T05:50:07.948Z",
+    "updatedBy": "System Bootstrap"
+  },
+  "callTransferLogs": [],
+  "leads": [
+    {
+      "name": "Ramesh Patel",
+      "mobile": "+91 90193 63368",
+      "email": "ramesh.lead@example.com",
+      "productInterest": "Bulk Hospital Supply Dolo 650",
+      "productId": "prod-dolo-650",
+      "productName": "Dolo 650 Tablet (Paracetamol 650mg)",
+      "sellerId": "usr-seller-1",
+      "notes": "Need 500 strips with GST invoice",
+      "hasConsent": true,
+      "consentTimestamp": "2026-11-01T06:02:37.694Z",
+      "source": "lead_acquisition_form",
+      "id": "lead-ee357cb6",
+      "status": "NEW",
+      "callStatus": "NOT_CALLED",
+      "createdAt": "2026-11-01T06:02:37.694Z",
+      "updatedAt": "2026-11-01T06:02:37.694Z"
     }
   ]
 }

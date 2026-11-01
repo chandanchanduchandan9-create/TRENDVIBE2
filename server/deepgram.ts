@@ -56,7 +56,7 @@ export class DeepgramService {
         Authorization: `Token ${apiKey}`,
         'Content-Type': mimeType || 'audio/webm',
       },
-      body: audioBuffer,
+      body: new Uint8Array(audioBuffer),
     });
 
     const data = await response.json();

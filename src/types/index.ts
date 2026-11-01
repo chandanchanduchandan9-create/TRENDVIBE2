@@ -238,12 +238,32 @@ export interface ProductEnquiry {
   sellerId: string;
   customerId: string;
   customerName: string;
+  customerPhone?: string;
+  customerEmail?: string;
+  question?: string;
+  preferredCallback?: 'INSTANT_AI_CALL' | 'SCHEDULED_CALL' | 'TEXT_ONLY';
+  callStatus?: 'PENDING' | 'CALLING' | 'COMPLETED' | 'FAILED';
+  callSummary?: string;
+  interestLevel?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSURE';
+  customerQuestions?: string[];
+  customerObjections?: string[];
+  followupRequired?: string;
+  calledAt?: string;
+  callDuration?: number;
+  callSid?: string;
+  hasConsent?: boolean;
+  consentTimestamp?: string;
+  googleSheetsSynced?: boolean;
+  googleSheetsRowUrl?: string;
+  humanTransferRequested?: boolean;
+  transferReason?: string;
+  transcript?: { speaker: string; text: string; timestamp: string }[];
   status: 'OPEN' | 'RESOLVED';
-  channel: 'WEB_CHAT' | 'ZYRO_AI_CALL';
+  channel: 'WEB_CHAT' | 'BOT_CALL' | 'FORM_ENQUIRY';
   lastMessageSnippet: string;
   messages: {
     id: string;
-    sender: 'customer' | 'seller' | 'zyro_ai';
+    sender: 'customer' | 'seller' | 'enquiry_bot';
     senderName: string;
     text: string;
     kannadaText?: string;
@@ -320,3 +340,43 @@ export interface PriceDropAlert {
   createdAt: string;
   status: 'active' | 'triggered';
 }
+
+export type HumanSupportPhoneStatus = 'NOT_CONFIGURED' | 'CONFIGURED' | 'TEST_FAILED';
+
+export interface PlatformSettings {
+  humanSupportPhone?: string;
+  humanSupportPhoneStatus?: HumanSupportPhoneStatus;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface CallTransferLog {
+  id: string;
+  callSid: string;
+  fromPhone: string;
+  transferredToNumber: string;
+  requestedAt: string;
+  status: 'SUCCESS' | 'FAILED_UNCONFIGURED' | 'FAILED_BUSY' | 'FAILED_NO_ANSWER' | 'FAILED_INVALID_NUMBER';
+  reason?: string;
+}
+
+export interface CustomerLead {
+  id: string;
+  name: string;
+  mobile: string;
+  email: string;
+  productInterest: string;
+  productId?: string;
+  productName?: string;
+  sellerId?: string;
+  notes?: string;
+  hasConsent: boolean;
+  consentTimestamp: string;
+  source: string;
+  status: 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'CONVERTED' | 'DISQUALIFIED';
+  callStatus?: 'NOT_CALLED' | 'CALLING' | 'COMPLETED' | 'FAILED';
+  callSummary?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+

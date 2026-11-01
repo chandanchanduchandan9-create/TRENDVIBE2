@@ -8,19 +8,18 @@ import { CartCheckoutView } from './components/CartCheckoutView.tsx';
 import { CustomerDashboard } from './components/CustomerDashboard.tsx';
 import { SellerDashboard } from './components/SellerDashboard.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
-import { ZyroCallingModal } from './components/ZyroCallingModal.tsx';
+import { LeadAcquisitionView } from './components/LeadAcquisitionView.tsx';
 import { EnquiryModal } from './components/EnquiryModal.tsx';
 import { LoginModal } from './components/LoginModal.tsx';
-import { RetellVoiceWidget } from './components/RetellVoiceWidget.tsx';
-import { Sparkles, PhoneCall, CheckCircle2, AlertCircle, Info } from 'lucide-react';
+import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 const MainApp: React.FC = () => {
   const {
+    user,
     activeTab,
     setActiveTab,
     selectedProductId,
     toasts,
-    startCallingZyro,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -63,13 +62,11 @@ const MainApp: React.FC = () => {
         {activeTab === 'seller-dashboard' && <SellerDashboard />}
 
         {activeTab === 'admin-dashboard' && <AdminDashboard />}
+
+        {activeTab === 'lead-acquisition' && <LeadAcquisitionView />}
       </main>
 
-      {/* Floating "Talk to Zyro AI" Button Connected to Retell AI Voice Agent */}
-      <RetellVoiceWidget />
-
       {/* Modals & Overlays */}
-      <ZyroCallingModal />
       <EnquiryModal />
       <LoginModal />
 
@@ -107,11 +104,11 @@ const MainApp: React.FC = () => {
                 TrendVibe Store
               </span>
               <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-1.5 py-0.5 rounded">
-                Zyro AI
+                Multi-Vendor
               </span>
             </div>
             <p className="text-slate-500 text-xs leading-relaxed">
-              Multi-vendor e-commerce platform powered by Zyro AI. Certified medicines, fresh kitchen foods, technology, and apparel with verified 30-minute hyper-local delivery.
+              Multi-vendor e-commerce platform. Certified medicines, fresh kitchen foods, technology, and apparel with verified 30-minute hyper-local delivery.
             </p>
           </div>
 
@@ -129,13 +126,13 @@ const MainApp: React.FC = () => {
 
           <div>
             <h4 className="font-bold text-slate-900 uppercase text-[11px] tracking-wider mb-3">
-              Zyro AI Capabilities
+              Customer Services
             </h4>
             <ul className="space-y-2 text-slate-600">
-              <li>Bilingual Voice Calling in English & ಕನ್ನಡ</li>
-              <li>Seller PDF Knowledge Retrieval & Citations (RAG)</li>
-              <li>Real-Time Conversational Order Placement</li>
-              <li>Atomic Stock & Reservation Verification</li>
+              <li>Instant Product Enquiry Messaging</li>
+              <li>Verified Pharmacy & Batch Certification</li>
+              <li>Seamless Order Placement & Delivery Tracking</li>
+              <li>Hyper-Local 30-Minute Dispatch</li>
             </ul>
           </div>
 
@@ -153,7 +150,7 @@ const MainApp: React.FC = () => {
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-8 mt-8 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between text-[11px] text-slate-400 gap-2">
-          <p>© 2026 TrendVibe Store & Zyro AI. All rights reserved.</p>
+          <p>© 2026 TrendVibe Store. All rights reserved.</p>
           <p>Designed for production multi-vendor operations with real database persistence.</p>
         </div>
       </footer>

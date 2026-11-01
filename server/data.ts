@@ -2161,13 +2161,13 @@ export const INITIAL_ORDERS: Order[] = [
     isExpress30Min: true,
     estimatedDeliveryTime: 'Within 18 mins (Express Delivery Rider En Route)',
     aiAssisted: true,
-    aiConversationSummary: 'Customer enquired via Zyro AI voice agent in Kannada & English about fast dehydration & headache relief. Zyro AI validated Bangalore 560103 express serviceability, checked stock, readback order summary and customer authorized instant checkout.',
+    aiConversationSummary: 'Customer enquired via Enquiry Bot voice agent in Kannada & English about fast dehydration & headache relief. Enquiry Bot validated Bangalore 560103 express serviceability, checked stock, readback order summary and customer authorized instant checkout.',
     timeline: [
       {
         status: 'ORDER_PLACED',
         timestamp: '2026-10-18T10:15:00Z',
-        note: 'Order confirmed via Zyro AI Express Checkout',
-        actor: 'Zyro AI Assistant'
+        note: 'Order confirmed via Enquiry Bot Express Checkout',
+        actor: 'Enquiry Bot Assistant'
       },
       {
         status: 'ACCEPTED',
@@ -2184,14 +2184,14 @@ export const INITIAL_ORDERS: Order[] = [
       {
         status: 'READY_FOR_DISPATCH',
         timestamp: '2026-10-18T10:22:00Z',
-        note: 'Assigned to Express Electric Rider #EV-42 (Kiran M.)',
+        note: 'Assigned to Express Rider Ramesh Kumar (Scooter KA 01 EV 4821 • Phone: +91 90193 63368)',
         actor: 'Automated Dispatch'
       },
       {
         status: 'OUT_FOR_DELIVERY',
         timestamp: '2026-10-18T10:25:00Z',
-        note: 'Rider is 1.4 km away on Bellandur ORR approaching Green Glen Heights',
-        actor: 'Delivery Partner'
+        note: 'Ramesh Kumar (+91 90193 63368) is 1.4 km away on Scooter KA 01 EV 4821 approaching Green Glen Heights',
+        actor: 'Rider Ramesh Kumar'
       }
     ],
     createdAt: '2026-10-18T10:15:00Z',

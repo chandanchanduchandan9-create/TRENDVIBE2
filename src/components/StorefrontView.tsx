@@ -29,7 +29,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   selectedCategory,
   setSelectedCategory,
 }) => {
-  const { categories, startCallingZyro, setActiveTab, showToast, activeTab } = useApp();
+  const { categories, setActiveTab, showToast, activeTab } = useApp();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -77,36 +77,28 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
 
         <div className="relative z-10 max-w-3xl space-y-4">
           <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-400/30">
-            <Sparkles className="w-3.5 h-3.5 text-indigo-400 animate-spin-slow" />
-            <span>Next-Gen E-Commerce Powered by Zyro AI</span>
+            <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
+            <span>Multi-Vendor E-Commerce Platform</span>
           </div>
 
           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-black tracking-tight leading-tight">
-            Curated Shopping, Elevated by{' '}
-            <span className="bg-gradient-to-r from-indigo-300 via-indigo-100 to-violet-300 bg-clip-text text-transparent">
-              AI Voice Calling
+            Curated Shopping, Delivered with{' '}
+            <span className="bg-gradient-to-r from-cyan-300 via-white to-blue-300 bg-clip-text text-transparent">
+              Hyper-Local Speed
             </span>
           </h1>
 
           <p className="text-slate-300 text-xs sm:text-base leading-relaxed max-w-2xl">
-            Explore 8 certified product categories from healthcare & fresh food to flagship 5G smartphones and gaming laptops. Speak with Zyro AI for instant verified recommendations, price drop tracking, and 30-minute express deliveries.
+            Explore 8 certified product categories from healthcare & fresh food to flagship 5G smartphones and gaming laptops. Benefit from instant verified recommendations, price drop tracking, and 30-minute express deliveries.
           </p>
 
           <div className="flex flex-wrap items-center gap-3 pt-2">
             <button
-              onClick={() => startCallingZyro()}
-              className="px-6 py-3 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition-all transform hover:scale-105 cursor-pointer"
-            >
-              <PhoneCall className="w-4 h-4" />
-              <span>Call Zyro AI Voice Assistant</span>
-            </button>
-
-            <button
               onClick={() => setActiveTab('ai-shopping')}
-              className="px-6 py-3 bg-white/10 hover:bg-white/20 text-white font-bold text-xs sm:text-sm rounded-2xl border border-white/20 transition-all flex items-center gap-2 cursor-pointer"
+              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm rounded-2xl border border-indigo-500 shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 cursor-pointer"
             >
-              <Sparkles className="w-4 h-4 text-indigo-400" />
-              <span>Explore AI Shopping</span>
+              <Sparkles className="w-4 h-4 text-white" />
+              <span>Smart Product Search</span>
             </button>
           </div>
         </div>
@@ -257,7 +249,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <h3 className="text-base font-bold text-slate-900">No matching products found</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Try adjusting your search query, clearing filters, or asking Zyro AI to look up the item.
+              Try adjusting your search query, clearing filters, or asking Customer Enquiry Bot to look up the item.
             </p>
             <button
               onClick={() => {

@@ -3,7 +3,6 @@ import { useApp } from '../context/AppContext.tsx';
 import {
   ShoppingBag,
   Sparkles,
-  PhoneCall,
   User as UserIcon,
   Search,
   Store,
@@ -16,6 +15,11 @@ import {
   LogIn,
   LogOut,
   Shield,
+  MapPin,
+  Plus,
+  Check,
+  X,
+  UserCheck,
 } from 'lucide-react';
 
 interface NavbarProps {
@@ -38,7 +42,6 @@ export const Navbar: React.FC<NavbarProps> = ({
     cartCount,
     activeTab,
     setActiveTab,
-    startCallingZyro,
     categories,
     openLoginModal,
     logout,
@@ -56,19 +59,12 @@ export const Navbar: React.FC<NavbarProps> = ({
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
               ⚡ 30-MIN EXPRESS
             </span>
-            <span className="hidden sm:inline text-slate-200">
+            <span className="text-slate-200">
               Instant delivery on certified Medicines & Fresh Health Kitchen in serviceable Bangalore pin codes!
             </span>
           </div>
           <div className="flex items-center gap-4 text-[11px] text-slate-300">
-            <span className="hidden md:inline">24/7 AI Voice Shopping Assistant</span>
-            <button
-              onClick={() => startCallingZyro()}
-              className="inline-flex items-center gap-1.5 bg-white/10 hover:bg-white/20 text-white px-2.5 py-0.5 rounded-full transition-colors cursor-pointer border border-white/15"
-            >
-              <PhoneCall className="w-3 h-3 text-emerald-400" />
-              <span>Call Zyro AI</span>
-            </button>
+            <span className="hidden md:inline">24/7 Verified Multi-Vendor Hub</span>
           </div>
         </div>
       </div>
@@ -90,13 +86,12 @@ export const Navbar: React.FC<NavbarProps> = ({
                   <span className="text-xl font-extrabold tracking-tight bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-800 bg-clip-text text-transparent">
                     TrendVibe
                   </span>
-                  <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-200 flex items-center gap-0.5">
-                    <Sparkles className="w-2.5 h-2.5" />
-                    Zyro AI
+                  <span className="bg-indigo-100 text-indigo-700 text-[10px] font-bold px-1.5 py-0.5 rounded border border-indigo-200">
+                    Store
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-500 font-medium tracking-wide">
-                  Curated Multi-Vendor Store & AI Voice Agent
+                  Multi-Vendor E-Commerce Platform
                 </p>
               </div>
             </button>
@@ -118,7 +113,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Navigation Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Zyro AI Shopping Button */}
+            {/* Smart Search Button */}
             <button
               onClick={() => setActiveTab('ai-shopping')}
               className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
@@ -128,18 +123,24 @@ export const Navbar: React.FC<NavbarProps> = ({
               }`}
             >
               <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">AI Shopping</span>
+              <span className="hidden sm:inline">Smart Search</span>
             </button>
 
-            {/* Calling Agent Trigger Button */}
-            <button
-              onClick={() => startCallingZyro()}
-              className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200/80 transition-all cursor-pointer"
-              title="Launch bilingual AI Calling Agent (English & Kannada)"
-            >
-              <PhoneCall className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
-              <span className="hidden sm:inline">Voice Agent</span>
-            </button>
+            {/* Lead Acquisition Form Button (Sellers/Admins Only) */}
+            {(user?.role === 'seller' || user?.role === 'admin') && (
+              <button
+                onClick={() => setActiveTab('lead-acquisition')}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                  activeTab === 'lead-acquisition'
+                    ? 'bg-indigo-600 text-white shadow-md'
+                    : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                }`}
+                title="Commercial Consultation & Lead Form"
+              >
+                <UserCheck className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Lead Form</span>
+              </button>
+            )}
 
             {/* Customer Orders */}
             {user?.role === 'customer' && (

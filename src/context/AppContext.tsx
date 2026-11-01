@@ -40,7 +40,7 @@ interface AppContextType {
     hasExpressEligibleItems: boolean;
   };
 
-  activeTab: 'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard';
+  activeTab: 'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition';
   setActiveTab: (tab: any) => void;
   selectedProductId: string | null;
   openProduct: (id: string) => void;
@@ -50,8 +50,8 @@ interface AppContextType {
 
   isCallingOpen: boolean;
   activeCallingProduct: Product | null;
-  startCallingZyro: (product?: Product) => void;
-  endCallingZyro: () => void;
+  startCallingBot: (product?: Product) => void;
+  endCallingBot: () => void;
 
   toasts: ToastInfo[];
   showToast: (text: string, type?: 'success' | 'error' | 'info') => void;
@@ -64,7 +64,7 @@ interface AppContextType {
   loginModalDefaultRole: 'customer' | 'seller' | 'admin';
   openLoginModal: (role?: 'customer' | 'seller' | 'admin') => void;
   closeLoginModal: () => void;
-  handleLogin: (credentials: { email: string; phone: string; password: string; role?: string }) => Promise<void>;
+  handleLogin: (credentials: { email?: string; phone?: string; password: string; role?: string }) => Promise<void>;
   handleRegister: (data: {
     name: string;
     email: string;
@@ -76,6 +76,24 @@ interface AppContextType {
   }) => Promise<void>;
   logout: () => void;
   calibrateUserVoiceProfile: () => Promise<void>;
+
+  // Calling Gateway for contacting customers
+  isCallingGatewayOpen: boolean;
+  callingGatewayInitialData: {
+    customerPhone?: string;
+    customerName?: string;
+    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
+    orderId?: string;
+    productId?: string;
+  } | null;
+  openCallingGateway: (initialData?: {
+    customerPhone?: string;
+    customerName?: string;
+    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
+    orderId?: string;
+    productId?: string;
+  }) => void;
+  closeCallingGateway: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -95,7 +113,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const [activeTab, setActiveTab] = useState<'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard'>('storefront');
+  const [activeTab, setActiveTab] = useState<'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition'>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const viewParam = params.get('view');
+      const isLeadParam = params.get('lead') !== null || viewParam === 'lead-acquisition' || window.location.pathname.includes('/lead-capture');
+      if (isLeadParam) {
+        return 'lead-acquisition';
+      }
+      if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition'].includes(viewParam)) {
+        return viewParam as any;
+      }
+      if (params.get('product') || params.get('productId')) {
+        return 'product-detail';
+      }
+    } catch {}
+    return 'storefront';
+  });
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
   const [selectedEnquiryProductId, setSelectedEnquiryProductId] = useState<string | null>(null);
 
@@ -109,21 +143,25 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     localStorage.setItem('trendvibe_cart', JSON.stringify(cart));
   }, [cart]);
 
-  // Handle URL query parameters for persistent shareable URLs: ?product=... or ?enquire=...
+  // Handle URL query parameters for persistent shareable URLs: ?product=... or ?enquire=... or ?view=lead-acquisition
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const prodParam = params.get('product') || params.get('productId');
     const enquireParam = params.get('enquire') || params.get('enquiryId');
     const viewParam = params.get('view');
+    const isLeadParam = params.get('lead') !== null || viewParam === 'lead-acquisition';
 
-    if (prodParam) {
+    if (isLeadParam) {
+      setActiveTab('lead-acquisition');
+    } else if (prodParam) {
       setSelectedProductId(prodParam);
       setActiveTab('product-detail');
     }
+
     if (enquireParam) {
       setSelectedEnquiryProductId(enquireParam);
     }
-    if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard'].includes(viewParam)) {
+    if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition'].includes(viewParam)) {
       setActiveTab(viewParam as any);
     }
   }, []);
@@ -187,7 +225,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setIsLoginModalOpen(false);
   };
 
-  const handleLogin = async (credentials: { email: string; phone: string; password: string; role?: string }) => {
+  const handleLogin = async (credentials: { email?: string; phone?: string; password: string; role?: string }) => {
     try {
       const res = await api.login(credentials);
       if (res?.user && res?.token) {
@@ -377,13 +415,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     updateUrlParam('enquire', null);
   };
 
-  const startCallingZyro = (product?: Product) => {
+  const startCallingBot = (product?: Product) => {
     setActiveCallingProduct(product || null);
     setIsCallingOpen(true);
   };
 
-  const endCallingZyro = () => {
+  const endCallingBot = () => {
     setIsCallingOpen(false);
+  };
+
+  const [isCallingGatewayOpen, setIsCallingGatewayOpen] = useState(false);
+  const [callingGatewayInitialData, setCallingGatewayInitialData] = useState<{
+    customerPhone?: string;
+    customerName?: string;
+    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
+    orderId?: string;
+    productId?: string;
+  } | null>(null);
+
+  const openCallingGateway = (initialData?: {
+    customerPhone?: string;
+    customerName?: string;
+    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
+    orderId?: string;
+    productId?: string;
+  }) => {
+    setCallingGatewayInitialData(initialData || null);
+    setIsCallingGatewayOpen(true);
+  };
+
+  const closeCallingGateway = () => {
+    setIsCallingGatewayOpen(false);
+    setCallingGatewayInitialData(null);
   };
 
   const checkExpressServiceability = (pincode: string) => {
@@ -423,8 +486,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         closeEnquiryModal,
         isCallingOpen,
         activeCallingProduct,
-        startCallingZyro,
-        endCallingZyro,
+        startCallingBot,
+        endCallingBot,
         toasts,
         showToast,
         expressPincodes: EXPRESS_PINCODES,
@@ -437,6 +500,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         handleRegister,
         logout,
         calibrateUserVoiceProfile,
+        isCallingGatewayOpen,
+        callingGatewayInitialData,
+        openCallingGateway,
+        closeCallingGateway,
       }}
     >
       {children}

@@ -101,13 +101,9 @@ export const LoginModal: React.FC = () => {
         setLoading(false);
       }
     } else {
-      // Sign in mode
+      // Sign in mode - Gmail Address and Password is enough
       if (!email.trim()) {
         setErrorMsg('Please enter your Gmail or registered email address.');
-        return;
-      }
-      if (!phone.trim()) {
-        setErrorMsg('Please enter your mobile phone number.');
         return;
       }
       if (!password.trim()) {
@@ -119,7 +115,6 @@ export const LoginModal: React.FC = () => {
       try {
         await handleLogin({
           email: email.trim(),
-          phone: phone.trim(),
           password: password.trim(),
           role: selectedRole,
         });
@@ -164,7 +159,6 @@ export const LoginModal: React.FC = () => {
               onClick={() => {
                 setAuthMode('signin');
                 setErrorMsg(null);
-                applyDemoCredentials(selectedRole);
               }}
               className={`flex-1 py-1.5 px-3 rounded-lg text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
                 authMode === 'signin'
@@ -252,7 +246,7 @@ export const LoginModal: React.FC = () => {
           <div className="flex items-center gap-2">
             <ShieldCheck className="w-4 h-4 shrink-0" />
             <span className="font-semibold">
-              {selectedRole === 'customer' && 'Customer Portal: Orders, Addresses, Zyro AI Voice shopping'}
+              {selectedRole === 'customer' && 'Customer Portal: Orders, Addresses, Enquiry Bot Voice shopping'}
               {selectedRole === 'seller' && 'Authorized Seller Hub: Inventory, orders, catalogue & CRM'}
               {selectedRole === 'admin' && 'Platform Admin: Seller approvals, Supabase sync, audits'}
             </span>
@@ -357,10 +351,10 @@ export const LoginModal: React.FC = () => {
                 </>
               )}
 
-              {/* 1. Gmail / Email Address Input */}
+              {/* Gmail / Email Address Input */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                  <span>{authMode === 'signup' ? 'Email Address:' : '1. Gmail / Registered Email:'}</span>
+                  <span>{authMode === 'signup' ? 'Email Address:' : '1. Gmail Address:'}</span>
                   <span className="text-[10px] text-slate-400 font-normal">Google Workspace / Gmail</span>
                 </label>
                 <div className="relative">
@@ -368,7 +362,7 @@ export const LoginModal: React.FC = () => {
                   <input
                     type="email"
                     required
-                    placeholder="e.g. yourname@gmail.com"
+                    placeholder="e.g. chandanchanduchandan9@gmail.com"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-300 focus:bg-white text-sm text-slate-900 pl-10 pr-4 py-2.5 rounded-xl border focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-medium"
@@ -376,32 +370,34 @@ export const LoginModal: React.FC = () => {
                 </div>
               </div>
 
-              {/* 2. Mobile Phone Number Input */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                  <span>{authMode === 'signup' ? 'Mobile Phone Number:' : '2. Mobile Phone Number:'}</span>
-                  <span className="text-[10px] text-emerald-600 font-semibold">2FA SMS Verified</span>
-                </label>
-                <div className="relative flex">
-                  <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-slate-300 bg-slate-100 text-slate-600 text-xs font-bold">
-                    <Phone className="w-3.5 h-3.5 mr-1 text-slate-500" />
-                    +91
-                  </span>
-                  <input
-                    type="tel"
-                    required
-                    placeholder="10-digit mobile number"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-300 focus:bg-white text-sm text-slate-900 px-3.5 py-2.5 rounded-r-xl border focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono"
-                  />
+              {/* Mobile Phone Number Input (Only for Signup) */}
+              {authMode === 'signup' && (
+                <div>
+                  <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
+                    <span>Mobile Phone Number:</span>
+                    <span className="text-[10px] text-emerald-600 font-semibold">SMS Verified</span>
+                  </label>
+                  <div className="relative flex">
+                    <span className="inline-flex items-center px-3 rounded-l-xl border border-r-0 border-slate-300 bg-slate-100 text-slate-600 text-xs font-bold">
+                      <Phone className="w-3.5 h-3.5 mr-1 text-slate-500" />
+                      +91
+                    </span>
+                    <input
+                      type="tel"
+                      required
+                      placeholder="10-digit mobile number"
+                      value={phone}
+                      onChange={(e) => setPhone(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-300 focus:bg-white text-sm text-slate-900 px-3.5 py-2.5 rounded-r-xl border focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 font-mono"
+                    />
+                  </div>
                 </div>
-              </div>
+              )}
 
-              {/* 3. Password Input */}
+              {/* Password Input */}
               <div>
                 <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide mb-1.5 flex items-center justify-between">
-                  <span>{authMode === 'signup' ? 'Create Password:' : '3. Password:'}</span>
+                  <span>{authMode === 'signup' ? 'Create Password:' : '2. Password:'}</span>
                   <span className="text-[10px] text-indigo-600 font-semibold">Encrypted Storage</span>
                 </label>
                 <div className="relative">

@@ -20,7 +20,7 @@ import confetti from 'canvas-confetti';
 
 interface ChatMessage {
   id: string;
-  sender: 'user' | 'zyro_ai';
+  sender: 'user' | 'enquiry_bot';
   text: string;
   kannadaText?: string;
   citations?: string[];
@@ -31,14 +31,14 @@ interface ChatMessage {
 }
 
 export const AIShoppingView: React.FC = () => {
-  const { user, startCallingZyro, showToast, setActiveTab, openProduct, addToCart } = useApp();
+  const { user, startCallingBot, showToast, setActiveTab, openProduct, addToCart } = useApp();
 
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       id: 'welcome',
-      sender: 'zyro_ai',
-      text: "Hello! I am Zyro AI, your intelligent shopping assistant at TrendVibe Store. I can help you verify certified medicines (like Dolo 650 & Electral), explore high-protein foods, compare laptops, check 30-minute hyper-local delivery in Bangalore, or even place an order directly via conversational voice/chat. How can I assist you today?",
-      citations: ['TrendVibe Store Catalogue & Verified Seller Knowledge Base'],
+      sender: 'enquiry_bot',
+      text: "Hello! I am the Customer Enquiry Bot, your intelligent real-time assistant at TrendVibe Store. I can help you verify certified medicines, explore high-protein foods, compare laptops, check 30-minute hyper-local delivery in Bangalore, or even place an order directly via conversational voice/chat. How can I assist you today?",
+      citations: ['TrendVibe Store Catalogue & Neural Knowledge Base'],
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -70,7 +70,7 @@ export const AIShoppingView: React.FC = () => {
 
     if (!SpeechRecognition) {
       showToast('Speech recognition not supported in your browser, launching voice call instead.', 'info');
-      startCallingZyro();
+      startCallingBot();
       return;
     }
 
@@ -103,7 +103,7 @@ export const AIShoppingView: React.FC = () => {
           showToast('Microphone permission blocked. Please allow mic access in your browser.', 'error');
         } else if (err.error === 'network') {
           showToast('Voice cloud recognition unavailable in iframe. Opening Voice Hub...', 'info');
-          startCallingZyro();
+          startCallingBot();
         }
       };
 
@@ -151,7 +151,7 @@ export const AIShoppingView: React.FC = () => {
     setLoading(true);
 
     try {
-      const res = await api.chatWithZyro({
+      const res = await api.chatWithBot({
         message: q,
         language: selectedLanguage,
       });
@@ -164,7 +164,7 @@ export const AIShoppingView: React.FC = () => {
 
       const aiMsg: ChatMessage = {
         id: `ai-${Date.now()}`,
-        sender: 'zyro_ai',
+        sender: 'enquiry_bot',
         text: res.reply,
         kannadaText: res.kannadaReply,
         citations: res.citations,
@@ -176,7 +176,7 @@ export const AIShoppingView: React.FC = () => {
 
       setMessages((prev) => [...prev, aiMsg]);
     } catch (err: any) {
-      showToast(`Error from Zyro AI: ${err.message}`, 'error');
+      showToast(`Error from Customer Enquiry Bot: ${err.message}`, 'error');
     } finally {
       setLoading(false);
     }
@@ -198,7 +198,7 @@ export const AIShoppingView: React.FC = () => {
         paymentMethod: proposal.paymentMethod || 'COD',
         isExpress30Min: proposal.isExpress30Min,
         aiAssisted: true,
-        aiConversationSummary: `Confirmed via Zyro AI Dedicated Shopping Page dialogue`,
+        aiConversationSummary: `Confirmed via Customer Enquiry Bot Dedicated Shopping Page dialogue`,
       });
 
       confetti({ particleCount: 70, spread: 50 });
@@ -208,7 +208,7 @@ export const AIShoppingView: React.FC = () => {
         ...prev,
         {
           id: `order-ok-${Date.now()}`,
-          sender: 'zyro_ai',
+          sender: 'enquiry_bot',
           text: `🎉 Order #${newOrder.orderNumber} is confirmed! Total ₹${newOrder.totalAmount} payable via ${newOrder.paymentMethod}. ${
             newOrder.isExpress30Min
               ? '⚡ Our express rider will reach you in approximately 25-30 minutes.'
@@ -225,28 +225,63 @@ export const AIShoppingView: React.FC = () => {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8 animate-in fade-in">
-      {/* Top AI Calling Banner */}
+      {/* Top AI Banner */}
       <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white mb-6 shadow-xl border border-indigo-900/40 flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="space-y-2 text-center md:text-left">
           <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-400/30">
             <Sparkles className="w-3.5 h-3.5 text-indigo-400" />
-            <span>Zyro AI 24/7 Intelligent Shopping & Calling Agent</span>
+            <span>Smart Product Discovery & Search</span>
           </div>
           <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">
-            Conversational Shopping in English & ಕನ್ನಡ
+            Instant Product Intelligence & Search
           </h1>
           <p className="text-slate-300 text-xs sm:text-sm max-w-xl leading-relaxed">
-            Query manufacturer specifications, verify medicine dosages, ask about RAG-indexed PDF manuals, or order with 30-minute express delivery using voice or text.
+            Query manufacturer specifications, verify medicine dosages, explore food products, or search tech specs with 30-minute hyper-local delivery in Bangalore.
           </p>
         </div>
+      </div>
 
-        <button
-          onClick={() => startCallingZyro()}
-          className="shrink-0 px-6 py-3.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-sm rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center gap-2.5 transition-all transform hover:scale-105 cursor-pointer"
-        >
-          <PhoneCall className="w-4 h-4 animate-bounce" />
-          <span>Launch AI Voice Call</span>
-        </button>
+      {/* AI Studio Capabilities Ribbon */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center font-bold shrink-0 border border-indigo-100">
+            🎙️
+          </div>
+          <div>
+            <div className="font-bold text-slate-900 text-xs">Add voice conversations</div>
+            <div className="text-[10px] text-emerald-600 font-semibold">gemini-3.8-live • Active</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center font-bold shrink-0 border border-emerald-100">
+            🌐
+          </div>
+          <div>
+            <div className="font-bold text-slate-900 text-xs">Use Google Search data</div>
+            <div className="text-[10px] text-emerald-600 font-semibold">gemini-3.8-flash • Grounded</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-violet-50 text-violet-600 flex items-center justify-center font-bold shrink-0 border border-violet-100">
+            💬
+          </div>
+          <div>
+            <div className="font-bold text-slate-900 text-xs">Add a Gemini chatbot</div>
+            <div className="text-[10px] text-emerald-600 font-semibold">gemini-3.6-flash • Multi-turn</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-sm flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center font-bold shrink-0 border border-amber-100">
+            ✍️
+          </div>
+          <div>
+            <div className="font-bold text-slate-900 text-xs">Transcribe audio</div>
+            <div className="text-[10px] text-emerald-600 font-semibold">gemini-3.5-transcribe • Ready</div>
+          </div>
+        </div>
       </div>
 
       {/* Main Chat Interface Card */}
@@ -259,11 +294,11 @@ export const AIShoppingView: React.FC = () => {
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 text-sm">Zyro AI Assistant</h3>
+                <h3 className="font-bold text-slate-900 text-sm">Customer Enquiry Bot</h3>
                 <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
-                <span className="text-[11px] text-emerald-600 font-semibold">Online & Grounded</span>
+                <span className="text-[11px] text-emerald-600 font-semibold">Online & Neural</span>
               </div>
-              <p className="text-[11px] text-slate-500">Powered by Gemini 3.8 Flash + RAG Knowledge Base</p>
+              <p className="text-[11px] text-slate-500">Powered by Gemini 3.8 Flash + Multi-Vendor Catalogue</p>
             </div>
           </div>
 
@@ -299,7 +334,7 @@ export const AIShoppingView: React.FC = () => {
         {/* Message Stream */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5 bg-slate-50/50">
           {messages.map((m) => {
-            const isAi = m.sender === 'zyro_ai';
+            const isAi = m.sender === 'enquiry_bot';
             return (
               <div key={m.id} className={`flex gap-3 ${isAi ? 'items-start' : 'items-start flex-row-reverse'}`}>
                 <div
@@ -453,7 +488,7 @@ export const AIShoppingView: React.FC = () => {
           {loading && (
             <div className="flex items-center gap-2 text-indigo-600 text-xs px-2 animate-pulse">
               <Sparkles className="w-4 h-4 animate-spin" />
-              <span>Zyro AI is querying catalogue, PDF documents & inventory...</span>
+              <span>Customer Enquiry Bot is querying neural catalogue & real-time search...</span>
             </div>
           )}
           <div ref={chatEndRef} />

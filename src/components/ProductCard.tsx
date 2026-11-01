@@ -21,7 +21,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { addToCart, openProduct, openEnquiryModal, startCallingZyro, showToast } = useApp();
+  const { addToCart, openProduct, openEnquiryModal, startCallingBot, showToast } = useApp();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEnquiryLink, setCopiedEnquiryLink] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);
@@ -200,17 +200,17 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
           </div>
 
           <div className="grid grid-cols-2 gap-2">
-            {/* Talk to Zyro AI */}
+            {/* Customer Enquiry */}
             <button
               onClick={(e) => {
                 e.stopPropagation();
-                startCallingZyro(product);
+                openEnquiryModal(product.id);
               }}
               className="py-2 px-2 rounded-xl text-xs font-bold bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 flex items-center justify-center gap-1 transition-colors cursor-pointer"
-              title="Speak or chat with Zyro AI with verified context"
+              title="Send a product enquiry message to seller"
             >
-              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-              <span>Ask Zyro AI</span>
+              <MessageSquare className="w-3.5 h-3.5 text-indigo-600" />
+              <span>Enquire</span>
             </button>
 
             {/* Add to Cart */}

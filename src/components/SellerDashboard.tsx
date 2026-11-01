@@ -7,7 +7,9 @@ import {
   SellerDocument,
   DemandFunnelMetrics,
   SellerFinanceMetrics,
+  ProductEnquiry,
   OrderStatus,
+  CustomerLead,
 } from '../types/index.ts';
 import { api } from '../services/api.ts';
 import { parsePdfFile } from '../services/pdfParser.ts';
@@ -40,14 +42,25 @@ import {
   Upload,
   Image as ImageIcon,
   MapPin,
+  PhoneForwarded,
+  Sparkles,
+  PhoneCall,
+  Phone,
+  MessageSquare,
+  HelpCircle,
+  Clock,
+  UserCheck,
+  Share2,
 } from 'lucide-react';
 
 export const SellerDashboard: React.FC = () => {
-  const { user, categories, showToast } = useApp();
+  const { user, categories, showToast, openCallingGateway } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'products' | 'inventory' | 'delivery' | 'analytics' | 'finance'>('products');
+  const [activeSubTab, setActiveSubTab] = useState<'products' | 'enquiries' | 'inventory' | 'delivery' | 'analytics' | 'finance'>('products');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
+  const [enquiries, setEnquiries] = useState<ProductEnquiry[]>([]);
+  const [leads, setLeads] = useState<CustomerLead[]>([]);
   const [movements, setMovements] = useState<InventoryMovement[]>([]);
   const [documents, setDocuments] = useState<SellerDocument[]>([]);
   const [analytics, setAnalytics] = useState<DemandFunnelMetrics | null>(null);
@@ -199,8 +212,8 @@ export const SellerDashboard: React.FC = () => {
           ? prev.description
           : `Verified product specifications from ${parsed.fileName}.\n${parsed.extractedText.slice(0, 300)}...`,
       }));
-      setProductPdfSuccess(`Attached: ${parsed.fileName} (${(parsed.fileSizeBytes / 1024).toFixed(1)} KB) - Text extracted for Zyro AI`);
-      showToast(`PDF accepted! Extracted ${parsed.extractedText.length} characters of text for Zyro AI.`, 'success');
+      setProductPdfSuccess(`Attached: ${parsed.fileName} (${(parsed.fileSizeBytes / 1024).toFixed(1)} KB) - Text extracted for Enquiry Bot`);
+      showToast(`PDF accepted! Extracted ${parsed.extractedText.length} characters of text for Enquiry Bot.`, 'success');
     } catch (err: any) {
       showToast(err.message || 'Failed to read PDF file', 'error');
     } finally {
@@ -232,32 +245,86 @@ export const SellerDashboard: React.FC = () => {
     }
   };
 
+  const [platformSupportInfo, setPlatformSupportInfo] = useState<{ isConfigured: boolean; status: string; humanSupportPhone?: string } | null>(null);
+
   const loadAllData = async () => {
     setLoading(true);
     try {
       // Fetch products: if seller is active, get seller's products (or all products if customer/admin view)
       const sellerFilter = (user?.role === 'seller' && user?.id !== 'usr-customer-1') ? user.id : undefined;
-      const [prodsRes, ordsRes, movsRes, docsRes, anaRes, finRes, supaRes] = await Promise.all([
+      const [prodsRes, ordsRes, enqRes, leadsRes, movsRes, docsRes, anaRes, finRes, supaRes, supportRes] = await Promise.all([
         api.getProducts({ sellerId: sellerFilter }),
         api.getOrders(),
+        api.getEnquiries(),
+        api.getLeads().catch(() => []),
         api.getInventoryMovements(),
         api.getSellerDocuments(),
         api.getSellerAnalytics(),
         api.getSellerFinance(),
         api.getSupabaseStatus().catch(() => null),
+        api.getHumanSupportPhone().catch(() => null),
       ]);
 
       setProducts(prodsRes);
       setOrders(ordsRes);
+      setEnquiries(enqRes);
+      setLeads(leadsRes);
       setMovements(movsRes);
       setDocuments(docsRes);
       setAnalytics(anaRes);
       setFinance(finRes);
       if (supaRes) setSupabaseStatus(supaRes);
+      if (supportRes) setPlatformSupportInfo(supportRes);
     } catch (err: any) {
       showToast(`Error loading dashboard: ${err.message}`, 'error');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const [expandedTranscriptId, setExpandedTranscriptId] = useState<string | null>(null);
+  const [syncingGoogleSheets, setSyncingGoogleSheets] = useState(false);
+
+  const handleTriggerEnquiryCall = async (enquiryId: string) => {
+    try {
+      await api.triggerEnquiryCall(enquiryId);
+      showToast('AI Outbound Phone Call triggered to customer!', 'success');
+      loadAllData();
+    } catch (err: any) {
+      showToast(`Call trigger error: ${err.message}`, 'error');
+    }
+  };
+
+  const handleTransferToHuman = async (enquiryId: string) => {
+    try {
+      await api.transferEnquiryToHuman(enquiryId, 'Customer requested live seller representative');
+      showToast('Enquiry transferred to live human agent queue!', 'success');
+      loadAllData();
+    } catch (err: any) {
+      showToast(`Transfer error: ${err.message}`, 'error');
+    }
+  };
+
+  const handleTriggerLeadCall = async (leadId: string) => {
+    try {
+      await api.triggerLeadCall(leadId);
+      showToast('Authorized AI Outbound Call initiated for lead!', 'success');
+      loadAllData();
+    } catch (err: any) {
+      showToast(`Call trigger error: ${err.message}`, 'error');
+    }
+  };
+
+  const handleSyncGoogleSheets = async (enquiryId?: string) => {
+    setSyncingGoogleSheets(true);
+    try {
+      const res = await api.syncEnquiriesGoogleSheets(enquiryId);
+      showToast(res.message, 'success');
+      loadAllData();
+    } catch (err: any) {
+      showToast(`Google Sheets sync error: ${err.message}`, 'error');
+    } finally {
+      setSyncingGoogleSheets(false);
     }
   };
 
@@ -405,7 +472,7 @@ export const SellerDashboard: React.FC = () => {
         ],
       });
 
-      showToast('Document uploaded and indexed into Zyro AI knowledge base!', 'success');
+      showToast('Document uploaded and indexed into Enquiry Bot knowledge base!', 'success');
       setIsUploadDocOpen(false);
       setDocFileName('');
       setDocText('');
@@ -472,6 +539,18 @@ export const SellerDashboard: React.FC = () => {
         </button>
 
         <button
+          onClick={() => setActiveSubTab('enquiries')}
+          className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            activeSubTab === 'enquiries'
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 font-bold'
+          }`}
+        >
+          <PhoneForwarded className="w-4 h-4 text-emerald-600" />
+          <span>Product Enquiries & AI Calls ({enquiries.length})</span>
+        </button>
+
+        <button
           onClick={() => setActiveSubTab('inventory')}
           className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
             activeSubTab === 'inventory'
@@ -517,6 +596,18 @@ export const SellerDashboard: React.FC = () => {
         >
           <DollarSign className="w-4 h-4" />
           <span>Confidential Finance Dashboard</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('voice_calls' as any)}
+          className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            activeSubTab === ('voice_calls' as any)
+              ? 'bg-emerald-600 text-white shadow-xs'
+              : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 font-bold'
+          }`}
+        >
+          <PhoneForwarded className="w-4 h-4 text-emerald-600" />
+          <span>Voice AI Enquiries & Call Orders</span>
         </button>
       </div>
 
@@ -883,7 +974,7 @@ export const SellerDashboard: React.FC = () => {
             <div className="space-y-3">
               {[
                 { label: 'Storefront Impressions', value: analytics.impressions, pct: 100 },
-                { label: 'Zyro AI Enquiries Started', value: analytics.enquiriesStarted, pct: 60 },
+                { label: 'Enquiry Bot Enquiries Started', value: analytics.enquiriesStarted, pct: 60 },
                 { label: 'AI Voice & Text Conversations', value: analytics.aiConversationsCompleted, pct: 45 },
                 { label: 'Added to Cart', value: analytics.addToCartEvents, pct: 32 },
                 { label: 'Checkouts Started', value: analytics.checkoutStarts, pct: 24 },
@@ -1055,6 +1146,390 @@ export const SellerDashboard: React.FC = () => {
                   <span className="font-bold text-indigo-600">₹{finance.onlinePendingSettlement.toLocaleString('en-IN')}</span>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB 2: PRODUCT ENQUIRIES & AI VOICE CALLS */}
+      {activeSubTab === 'enquiries' && (
+        <div className="space-y-6">
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-indigo-900/30">
+            <div>
+              <div className="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Twilio + Gemini Outbound Call Automation System</span>
+              </div>
+              <h2 className="text-xl font-extrabold text-white mt-2">
+                Customer Product Enquiries & AI Phone Calling Logs
+              </h2>
+              <p className="text-xs text-slate-300 mt-0.5">
+                Real-time enquiries submitted via shareable product links. AI calls customers, answers questions using website MongoDB catalogue, and logs call summaries.
+              </p>
+            </div>
+
+            <button
+              onClick={() => openCallingGateway()}
+              className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition cursor-pointer"
+            >
+              <PhoneForwarded className="w-4 h-4" />
+              <span>Manual Outbound Call Gateway</span>
+            </button>
+          </div>
+
+          {/* Enquiries Metrics Row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] text-slate-500 font-semibold block">Total Enquiries</span>
+              <span className="text-xl font-extrabold text-slate-900">{enquiries.length}</span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] text-slate-500 font-semibold block">Completed AI Calls</span>
+              <span className="text-xl font-extrabold text-emerald-600">
+                {enquiries.filter((e) => e.callStatus === 'COMPLETED').length}
+              </span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] text-slate-500 font-semibold block">High Interest Leads</span>
+              <span className="text-xl font-extrabold text-indigo-600">
+                {enquiries.filter((e) => e.interestLevel === 'HIGH').length}
+              </span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] text-slate-500 font-semibold block">Follow-Ups Required</span>
+              <span className="text-xl font-extrabold text-amber-600">
+                {enquiries.filter((e) => e.followupRequired).length}
+              </span>
+            </div>
+          </div>
+
+          {/* Enquiries & Call Summaries List */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-indigo-600" />
+                <span>Customer Enquiries, AI Summaries & Interest Level</span>
+              </h3>
+              
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleSyncGoogleSheets()}
+                  disabled={syncingGoogleSheets}
+                  className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] rounded-lg flex items-center gap-1 cursor-pointer transition-all"
+                  title="Sync lead & call outcomes to Google Sheets"
+                >
+                  <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>{syncingGoogleSheets ? 'Syncing...' : 'Sync to Google Sheets Ledger'}</span>
+                </button>
+
+                <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-200">
+                  n8n + Gemini RAG
+                </span>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100 text-xs">
+              {enquiries.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">
+                  No product enquiries submitted yet. Share product enquiry links with customers to receive automated AI calls & summaries here.
+                </div>
+              ) : (
+                enquiries.map((enq) => {
+                  const isTranscriptOpen = expandedTranscriptId === enq.id;
+                  return (
+                    <div key={enq.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
+                      {/* Header Row: Customer & Product Info */}
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-sm text-slate-900">{enq.customerName}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="font-mono text-slate-600 text-xs font-semibold">{enq.customerPhone || '+91 98450 12345'}</span>
+                            {enq.customerEmail && <span className="text-slate-400 hidden md:inline">({enq.customerEmail})</span>}
+
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                              Consent Verified
+                            </span>
+
+                            {enq.humanTransferRequested && (
+                              <span className="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-300 flex items-center gap-1 animate-pulse">
+                                <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                Human Agent Escalated
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-slate-500 text-[11px] mt-0.5">
+                            Enquired Product: <strong className="text-indigo-700">{enq.productName}</strong>
+                          </p>
+                        </div>
+
+                        {/* Badges: Call Status & Interest Level */}
+                        <div className="flex items-center gap-2">
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide border ${
+                              enq.interestLevel === 'HIGH'
+                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                : enq.interestLevel === 'MEDIUM'
+                                ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                : 'bg-slate-100 text-slate-700 border-slate-300'
+                            }`}
+                          >
+                            Interest: {enq.interestLevel || 'HIGH'}
+                          </span>
+
+                          <span
+                            className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] uppercase tracking-wide ${
+                              enq.callStatus === 'COMPLETED'
+                                ? 'bg-emerald-500 text-white'
+                                : enq.callStatus === 'CALLING'
+                                ? 'bg-indigo-600 text-white animate-pulse'
+                                : 'bg-amber-500 text-white'
+                            }`}
+                          >
+                            {enq.callStatus || 'COMPLETED'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Question & AI Call Summary Block */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
+                          <span className="font-bold text-slate-700 block">Customer Question:</span>
+                          <p className="text-slate-800 italic">"{enq.question || enq.lastMessageSnippet}"</p>
+                          <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400">
+                            <span>Preferred Callback: {enq.preferredCallback || 'INSTANT_AI_CALL'}</span>
+                            <span>Received: {new Date(enq.createdAt).toLocaleDateString()}</span>
+                          </div>
+                        </div>
+
+                        <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100 space-y-1">
+                          <span className="font-bold text-indigo-950 block flex items-center justify-between">
+                            <span className="flex items-center gap-1">
+                              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                              AI-Generated Call Summary:
+                            </span>
+                            {enq.googleSheetsRowUrl && (
+                              <a
+                                href={enq.googleSheetsRowUrl}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="text-[10px] text-emerald-700 hover:underline font-bold flex items-center gap-0.5"
+                              >
+                                <FileCheck className="w-3 h-3 text-emerald-600" />
+                                Google Sheets Row
+                              </a>
+                            )}
+                          </span>
+                          <p className="text-indigo-900 leading-relaxed text-[11px]">
+                            {enq.callSummary || 'AI Outbound call in progress or queued for callback.'}
+                          </p>
+                          {enq.callDuration && (
+                            <span className="text-[10px] text-indigo-700 block pt-0.5 font-mono">
+                              Call Duration: {enq.callDuration}s {enq.callSid ? `• Sid: ${enq.callSid}` : ''}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Expandable ElevenLabs Call Transcript Drawer */}
+                      {enq.transcript && enq.transcript.length > 0 && (
+                        <div className="bg-slate-900 text-slate-100 rounded-2xl p-3.5 space-y-2 border border-slate-800">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedTranscriptId(isTranscriptOpen ? null : enq.id)}
+                            className="w-full flex items-center justify-between font-bold text-[11px] text-indigo-300 hover:text-white cursor-pointer"
+                          >
+                            <span className="flex items-center gap-1.5">
+                              <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                              <span>View ElevenLabs + Gemini Voice Transcript ({enq.transcript.length} turns)</span>
+                            </span>
+                            <span>{isTranscriptOpen ? 'Hide Transcript ▲' : 'Show Transcript ▼'}</span>
+                          </button>
+
+                          {isTranscriptOpen && (
+                            <div className="pt-2 space-y-2 border-t border-slate-800 text-[11px]">
+                              {enq.transcript.map((line, idx) => (
+                                <div key={idx} className="flex items-start gap-2">
+                                  <span className="font-mono text-[10px] text-slate-500 shrink-0">{line.timestamp}</span>
+                                  <span className={`font-bold shrink-0 ${line.speaker.includes('Customer') ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                    {line.speaker}:
+                                  </span>
+                                  <span className="text-slate-300">{line.text}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      )}
+
+                      {/* Customer Questions, Objections & Follow-up Row */}
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-slate-100">
+                        <div className="text-[11px] space-y-1">
+                          {enq.customerObjections && enq.customerObjections.length > 0 && (
+                            <div className="text-amber-800 font-medium">
+                              <strong>Objections / Concerns:</strong> {enq.customerObjections.join(', ')}
+                            </div>
+                          )}
+                          {enq.followupRequired && (
+                            <div className="text-emerald-800 font-bold">
+                              <strong>Follow-Up Requirement:</strong> {enq.followupRequired}
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Trigger Call, Transfer & Dial Actions */}
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <button
+                            onClick={() => handleTransferToHuman(enq.id)}
+                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                            title="Escalate & transfer call to human seller agent"
+                          >
+                            <PhoneForwarded className="w-3.5 h-3.5 text-rose-600" />
+                            <span>Transfer to Human</span>
+                          </button>
+
+                          <button
+                            onClick={() => handleTriggerEnquiryCall(enq.id)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                            title="Trigger AI Outbound Call to customer phone"
+                          >
+                            <Sparkles className="w-3.5 h-3.5" />
+                            <span>Trigger AI Call</span>
+                          </button>
+
+                          <button
+                            onClick={() =>
+                              openCallingGateway({
+                                customerPhone: enq.customerPhone || '+91 98450 12345',
+                                customerName: enq.customerName,
+                                callReason: 'product_enquiry',
+                                productId: enq.productId,
+                              })
+                            }
+                            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                          >
+                            <PhoneForwarded className="w-3.5 h-3.5" />
+                            <span>Dial Customer</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* SEPARATE COMMERCIAL LEADS SECTION */}
+          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-indigo-50/40">
+              <div className="flex items-center gap-2">
+                <UserCheck className="w-4 h-4 text-indigo-700" />
+                <h3 className="font-extrabold text-slate-900 text-sm">
+                  Commercial Consultation Leads from Lead Acquisition Form ({leads.length})
+                </h3>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2.5 py-0.5 rounded-full border border-indigo-200">
+                  Separate Module Submissions
+                </span>
+                <button
+                  onClick={() => {
+                    const url = `${window.location.origin}?view=lead-acquisition`;
+                    navigator.clipboard.writeText(url);
+                    showToast('Lead Acquisition Form link copied to clipboard!', 'success');
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
+                >
+                  <Copy className="w-3 h-3" />
+                  <span>Copy Lead Form Link</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="divide-y divide-slate-100 text-xs">
+              {leads.length === 0 ? (
+                <div className="p-8 text-center text-slate-400">
+                  No commercial leads submitted yet. Leads submitted through the separate Lead Acquisition Form (<code className="text-indigo-600 font-mono font-semibold">?view=lead-acquisition</code>) will be recorded here securely without automated calling.
+                </div>
+              ) : (
+                leads.map((ld) => (
+                  <div key={ld.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                      <div>
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-extrabold text-sm text-slate-900">{ld.name}</span>
+                          <span className="text-slate-400">•</span>
+                          <span className="font-mono text-slate-700 text-xs font-semibold">{ld.mobile}</span>
+                          <span className="text-slate-400">•</span>
+                          <span className="text-slate-600">{ld.email}</span>
+                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                            Consent Verified
+                          </span>
+                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                            ld.status === 'NEW' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'
+                          }`}>
+                            {ld.status}
+                          </span>
+                        </div>
+                        <p className="text-slate-600 text-[11px] mt-1">
+                          Product Interest: <strong className="text-indigo-700">{ld.productInterest}</strong>
+                          {ld.productName && ld.productName !== ld.productInterest && ` (${ld.productName})`}
+                        </p>
+                        {ld.notes && (
+                          <p className="text-slate-500 text-[11px] mt-0.5 italic">
+                            Requirement: "{ld.notes}"
+                          </p>
+                        )}
+                      </div>
+
+                      <div className="text-[11px] text-slate-400 font-mono">
+                        {new Date(ld.createdAt).toLocaleString()}
+                      </div>
+                    </div>
+
+                    {ld.callSummary && (
+                      <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-[11px] text-indigo-900">
+                        <strong>AI Call Summary:</strong> {ld.callSummary}
+                      </div>
+                    )}
+
+                    {/* Actions Row */}
+                    <div className="flex items-center justify-between gap-2 pt-1">
+                      <div className="text-[11px] text-slate-500">
+                        Call Status: <strong className="text-slate-800">{ld.callStatus || 'NOT_CALLED'}</strong>
+                      </div>
+
+                      <div className="flex items-center gap-2">
+                        <button
+                          onClick={() => handleTriggerLeadCall(ld.id)}
+                          className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer"
+                          title="Trigger explicit authorized AI phone call"
+                        >
+                          <Sparkles className="w-3.5 h-3.5" />
+                          <span>Trigger AI Call</span>
+                        </button>
+
+                        <button
+                          onClick={() =>
+                            openCallingGateway({
+                              customerPhone: ld.mobile,
+                              customerName: ld.name,
+                              callReason: 'product_enquiry',
+                              productId: ld.productId,
+                            })
+                          }
+                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
+                        >
+                          <PhoneForwarded className="w-3.5 h-3.5" />
+                          <span>Dial Customer</span>
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>
@@ -1327,7 +1802,7 @@ export const SellerDashboard: React.FC = () => {
                         Attach Product PDF Specification / Lab Certificate (Optional)
                       </span>
                       <p className="text-[11px] text-slate-500 mt-0.5">
-                        Upload a PDF manual, composition sheet, or dosage monograph. Zyro AI will read this to answer shopper questions.
+                        Upload a PDF manual, composition sheet, or dosage monograph. Enquiry Bot will read this to answer shopper questions.
                       </p>
                     </div>
                     {productForm.pdfDocName && (
@@ -1398,7 +1873,7 @@ export const SellerDashboard: React.FC = () => {
                       {productForm.pdfExtractedText && (
                         <div>
                           <label className="block text-[10px] font-semibold text-slate-500 mb-0.5">
-                            Extracted Knowledge Content (Editable for Zyro AI):
+                            Extracted Knowledge Content (Editable for Enquiry Bot):
                           </label>
                           <textarea
                             rows={3}
@@ -1712,7 +2187,7 @@ export const SellerDashboard: React.FC = () => {
             </div>
 
             <p className="text-xs text-slate-500 leading-relaxed">
-              When uploaded, document text is extracted, isolated per seller, and indexed for Zyro AI retrieval-augmented generation (RAG).
+              When uploaded, document text is extracted, isolated per seller, and indexed for Enquiry Bot retrieval-augmented generation (RAG).
             </p>
 
             <form onSubmit={handleUploadDocument} className="space-y-3 text-xs">
@@ -1795,7 +2270,7 @@ export const SellerDashboard: React.FC = () => {
                   type="submit"
                   className="px-5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-xl shadow-md cursor-pointer"
                 >
-                  Index into Zyro AI
+                  Index into Enquiry Bot
                 </button>
               </div>
             </form>
