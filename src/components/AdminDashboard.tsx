@@ -538,7 +538,7 @@ export const AdminDashboard: React.FC = () => {
               <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-900 space-y-2">
                 <div className="flex items-center gap-2 font-bold">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-                  <span>Missing Required Server Secrets ({aiCallingConfig.missingSecrets.join(', ')})</span>
+                  <span>Missing Required Server Secrets ({(aiCallingConfig.missingSecrets || []).join(', ')})</span>
                 </div>
                 <p className="text-slate-600 leading-relaxed">{aiCallingConfig.instructions}</p>
               </div>

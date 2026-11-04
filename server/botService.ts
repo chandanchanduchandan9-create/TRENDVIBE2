@@ -1,4 +1,4 @@
-import { GoogleGenAI } from '@google/genai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { db } from './db.ts';
 import { Product, Order } from '../src/types/index.ts';
 import { isProductExpress30MinEligible } from './delivery.ts';
@@ -750,6 +750,9 @@ export async function processBotConversation(input: BotChatInput): Promise<BotCh
 You are the Customer Enquiry Bot, the real-time AI Voice Assistant for TrendVibe Store.
 Your job is to speak naturally with customers over phone calls, understand their spoken questions in English, Hindi, or Kannada, provide accurate product information, help them place orders, and track live shipments.
 
+LIVE KNOWLEDGE CAPABILITY:
+You have access to real-time product knowledge via Google Search. If a customer asks about latest live prices on Amazon or external technical specs not in our catalog, you can look them up live to provide the most accurate advice.
+
 CRITICAL CONSTRAINTS:
 1. NEVER INVENT or make up product details, discounts, stock, warranty, or shipment tracking information! If information is unavailable, tell the customer honestly.
 2. Maintain natural voice conversational dialogue. Keep responses clear, concise (1-3 sentences for phone calls), and helpful.
@@ -812,4 +815,76 @@ Calling Session: ${input.isCallingSession ? 'LIVE PHONE CALL' : 'WEB CHAT'}`;
   }
 
   return trainedKnowledgeGuidance(input.message, currentProduct, input.customerName, input.customerPhone, input.hostHeader);
+}
+
+/**
+ * Import Live Product Knowledge and Data from Amazon or External URLs
+ * Uses Gemini Google Search Grounding to fetch and extract structured product details.
+ */
+export async function importExternalProductData(url: string): Promise<Partial<Product>> {
+  const prompt = `Extract detailed product information from this live URL: ${url}. 
+  
+  Instructions:
+  1. Use Google Search to find the latest specifications, price, and images for this specific product.
+  2. Categorize it into one of these valid slugs: 'medicines-healthcare', 'cosmetics-personal-care', 'laptops', 'mobiles', 'food', 'shoes-footwear', 'clothes-apparel', 'other-store-products'.
+  3. Ensure the MRP and Price are realistic numbers in INR (₹).
+  4. Extract a list of key technical specifications or ingredients.
+  5. Provide a primary image URL and at least 2 more relevant product photos.
+  6. Generate a compelling short marketing summary and a full technical description.`;
+
+  try {
+    const response = await ai.models.generateContent({
+      model: 'gemini-3.8-flash',
+      contents: prompt,
+      config: {
+        systemInstruction: 'You are an expert E-commerce Catalog Manager. Your goal is to extract accurate, structured product data from live web links with 100% precision.',
+        tools: [{ googleSearch: {} }],
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: Type.OBJECT,
+          properties: {
+            name: { type: Type.STRING, description: 'Product Title' },
+            brand: { type: Type.STRING, description: 'Brand Name' },
+            category: { type: Type.STRING, description: 'Primary category slug' },
+            subcategory: { type: Type.STRING, description: 'Specific sub-category or model line' },
+            shortDescription: { type: Type.STRING, description: '1-sentence marketing pitch' },
+            description: { type: Type.STRING, description: 'Detailed product features and specifications' },
+            mrp: { type: Type.NUMBER, description: 'Maximum Retail Price' },
+            price: { type: Type.NUMBER, description: 'Current Selling Price' },
+            images: { 
+              type: Type.ARRAY, 
+              items: { type: Type.STRING },
+              description: 'List of product photo URLs' 
+            },
+            specifications: {
+              type: Type.ARRAY,
+              items: {
+                type: Type.OBJECT,
+                properties: {
+                  key: { type: Type.STRING },
+                  value: { type: Type.STRING }
+                },
+                required: ['key', 'value']
+              },
+              description: 'Key technical attributes'
+            }
+          },
+          required: ['name', 'price', 'images', 'category']
+        }
+      }
+    });
+
+    const data = JSON.parse(response.text || '{}');
+    
+    // Map specifications array back to a record if needed, but the UI might handle array
+    // For simplicity, let's just return the raw data and let UI handle it
+    return {
+      ...data,
+      discountPercent: data.mrp > data.price ? Math.round(((data.mrp - data.price) / data.mrp) * 100) : 0,
+      updatedAt: new Date().toISOString()
+    };
+  } catch (err: any) {
+    console.error('[Amazon Import Error]:', err.message);
+    throw new Error(`Failed to extract live product data: ${err.message}`);
+  }
 }

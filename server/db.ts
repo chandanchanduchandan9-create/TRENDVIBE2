@@ -1293,6 +1293,7 @@ class StoreDatabase {
     this.saveData();
     return lead;
   }
+
 }
 
 export const db = new StoreDatabase();

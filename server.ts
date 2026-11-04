@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import { createServer as createViteServer } from 'vite';
 import dotenv from 'dotenv';
 import { db } from './server/db.ts';
-import { processBotConversation } from './server/botService.ts';
+import { processBotConversation, importExternalProductData } from './server/botService.ts';
 import {
   checkSupabaseStatus,
   syncDataToSupabase,
@@ -17,9 +17,11 @@ import { razorpayService } from './server/razorpay.ts';
 import { deepgramService } from './server/deepgram.ts';
 import { mongoService } from './server/mongodb.ts';
 import { elevenLabsService } from './server/elevenlabs.ts';
-import { twilioService } from './server/twilioService.ts';
+import { vobizService } from './server/vobizService.ts';
+import { amazonPaapiService } from './server/amazonPaapi.ts';
 import { getCourierTrackingDetails } from './server/courier.ts';
 import { smsService } from './server/sms.ts';
+import { voiceTools } from './server/voiceTools.ts';
 import http from 'http';
 import { generateAndSendOtp, verifyOtpCode, getSessionStatus, isSessionAuthenticated } from './server/otp.ts';
 import { setupTwilioMediaStreamServer } from './server/twilioMediaStream.ts';
@@ -237,6 +239,67 @@ app.post('/api/products', async (req, res) => {
     res.status(400).json({ error: err.message });
   }
 });
+
+app.post('/api/products/import-external', async (req, res) => {
+  const { url } = req.body;
+  if (!url) {
+    return res.status(400).json({ error: 'Live product URL is required' });
+  }
+
+  try {
+    // 1. Try Official Amazon PA-API first if configured
+    if (amazonPaapiService.isConfigured() && url.includes('amazon.')) {
+      try {
+        const amazonData = await amazonPaapiService.getProductDetails(url);
+        return res.json({
+          success: true,
+          provider: 'Amazon Official PA-API',
+          product: {
+            name: amazonData.title,
+            price: amazonData.price,
+            mrp: amazonData.mrp,
+            images: amazonData.images,
+            description: amazonData.features.join('\n'),
+            specifications: amazonData.specifications,
+            amazonUrl: amazonData.productUrl,
+            brand: amazonData.specifications['Brand'] || 'Amazon Product',
+          },
+          message: 'Real-time product data fetched from official Amazon API.',
+        });
+      } catch (apiErr: any) {
+        console.warn('[PA-API Fallback]:', apiErr.message);
+        // Fall back to Gemini if PA-API fails or ASIN not found
+      }
+    }
+
+    // 2. Fallback to Gemini Grounded Extraction
+    const productData = await importExternalProductData(url);
+    res.json({
+      success: true,
+      provider: 'Gemini Grounded Extraction',
+      product: productData,
+      message: 'Live product knowledge extracted using AI grounding.',
+    });
+  } catch (err: any) {
+    console.error('[Import External API Error]:', err.message);
+    res.status(500).json({ error: err.message || 'Failed to extract live product data' });
+  }
+});
+
+app.get('/api/amazon/product-details', async (req, res) => {
+  const { identifier } = req.query;
+  if (!identifier || typeof identifier !== 'string') {
+    return res.status(400).json({ error: 'ASIN or Amazon URL is required' });
+  }
+
+  try {
+    const data = await amazonPaapiService.getProductDetails(identifier);
+    res.json({ success: true, data });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 
 app.put('/api/products/:id', async (req, res) => {
   const user = getAuthUser(req);
@@ -1295,24 +1358,24 @@ app.get('/api/elevenlabs/audio/:audioId.mp3', (req, res) => {
 
 app.get('/api/twilio/config', (req, res) => {
   const host = req.headers.host;
-  const config = twilioService.getConfig(host);
+  const config = vobizService.getConfig(host);
   res.json(config);
 });
 
 app.post('/api/twilio/config', (req, res) => {
   const { accountSid, authToken, phoneNumber } = req.body;
-  twilioService.updateCredentials(accountSid, authToken, phoneNumber);
+  vobizService.updateCredentials(accountSid, authToken, phoneNumber);
   if (accountSid) process.env.TWILIO_ACCOUNT_SID = accountSid;
   if (authToken) process.env.TWILIO_AUTH_TOKEN = authToken;
   if (phoneNumber) process.env.TWILIO_PHONE_NUMBER = phoneNumber;
-  const config = twilioService.getConfig(req.headers.host);
+  const config = vobizService.getConfig(req.headers.host);
   res.json({ success: true, config });
 });
 
 // GET Central Human Support Phone Number Configuration
 app.get('/api/twilio/support-number', (req, res) => {
   const user = getAuthUser(req);
-  const settings = twilioService.getHumanSupportSettings();
+  const settings = vobizService.getHumanSupportSettings();
 
   // If user is not admin, mask phone number for privacy
   if (!user || user.role !== 'admin') {
@@ -1345,7 +1408,7 @@ app.post('/api/twilio/support-number', (req, res) => {
   const cleanPhone = rawPhone.replace(/[\s\-\(\)]/g, '');
 
   // Validate E.164 format: must start with + followed by country code and 7-14 digits
-  if (!twilioService.isValidE164(cleanPhone)) {
+  if (!vobizService.isValidE164(cleanPhone)) {
     db.updateHumanSupportPhone(rawPhone, 'NOT_CONFIGURED', user);
     return res.status(400).json({
       error: 'Invalid E.164 phone number format. Must start with "+" followed by country code and 7-14 digits (e.g. +919845012345).',
@@ -1378,7 +1441,7 @@ app.post('/api/twilio/support-number/test', async (req, res) => {
   const { phone } = req.body;
   const targetPhone = (phone || db.getPlatformSettings().humanSupportPhone || '').trim().replace(/[\s\-\(\)]/g, '');
 
-  if (!twilioService.isValidE164(targetPhone)) {
+  if (!vobizService.isValidE164(targetPhone)) {
     db.updateHumanSupportPhone(targetPhone, 'TEST_FAILED', user);
     return res.status(400).json({
       success: false,
@@ -1389,7 +1452,7 @@ app.post('/api/twilio/support-number/test', async (req, res) => {
   }
 
   // Generate test TwiML transfer response
-  const transferRes = await twilioService.generateCallTransferResponse({
+  const transferRes = await vobizService.generateCallTransferResponse({
     callSid: `TEST-TRANSFER-${Date.now()}`,
     from: user.phone || '+91 98450 12345',
     reason: 'Admin Panel Transfer Configuration Test',
@@ -1469,7 +1532,7 @@ app.post('/api/admin/test-ai-call', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Customer consent verification is required before initiating an AI voice call.' });
   }
 
-  if (!twilioService.isValidE164(targetNumber)) {
+  if (!vobizService.isValidE164(targetNumber)) {
     return res.status(400).json({ success: false, error: 'Invalid E.164 phone number format (+91XXXXXXXXXX or similar).' });
   }
 
@@ -1486,7 +1549,7 @@ app.post('/api/admin/test-ai-call', async (req, res) => {
   }
 
   try {
-    const callResult = await twilioService.initiateOutboundCall({
+    const callResult = await vobizService.initiateOutboundCall({
       to: targetNumber,
       customerName: 'Test Admin User',
       callReason: 'custom_support',
@@ -1516,7 +1579,7 @@ app.post('/api/twilio/calls/transfer-human', async (req, res) => {
   const { callSid, from, reason } = req.body;
   const host = req.headers.host;
 
-  const result = await twilioService.generateCallTransferResponse({
+  const result = await vobizService.generateCallTransferResponse({
     callSid,
     from,
     reason: reason || 'Live human agent transfer requested during call session',
@@ -1546,7 +1609,7 @@ app.post('/api/twilio/voice/transfer-status', (req, res) => {
   const callSid = req.body.CallSid || req.body.callSid || `CALL-${Date.now()}`;
   const dialCallStatus = req.body.DialCallStatus || req.body.dialCallStatus || 'failed';
   const from = req.body.From || '+91 98450 12345';
-  const { humanSupportPhone } = twilioService.getHumanSupportSettings();
+  const { humanSupportPhone } = vobizService.getHumanSupportSettings();
 
   console.log(`[Twilio Transfer Webhook] CallSid: ${callSid}, DialCallStatus: ${dialCallStatus}`);
 
@@ -1604,7 +1667,7 @@ app.get('/api/twilio/transfer-logs', (req, res) => {
 });
 
 app.get('/api/twilio/calls', async (_req, res) => {
-  const calls = await twilioService.getCallHistory();
+  const calls = await vobizService.getCallHistory();
   res.json(calls);
 });
 
@@ -1617,7 +1680,7 @@ app.post('/api/twilio/voice/inbound', async (req, res) => {
 
   console.log(`[Twilio] Inbound Voice Call received from ${from} (CallSid: ${callSid})`);
 
-  const twiml = await twilioService.handleInboundCall({
+  const twiml = await vobizService.handleInboundCall({
     callSid,
     from: String(from),
     to: String(to),
@@ -1638,7 +1701,7 @@ app.post('/api/twilio/voice/gather', async (req, res) => {
 
   console.log(`[Twilio] Caller speech received: "${speechResult}" (Confidence: ${confidence})`);
 
-  const twiml = await twilioService.handleGatherSpeech({
+  const twiml = await vobizService.handleGatherSpeech({
     callSid,
     speechResult: String(speechResult),
     confidence,
@@ -1655,7 +1718,7 @@ app.post('/api/twilio/voice/status', (req, res) => {
   const callSid = req.body.CallSid;
   const duration = req.body.CallDuration ? parseInt(req.body.CallDuration, 10) : undefined;
   if (callSid) {
-    twilioService.handleStatusCallback(callSid, duration);
+    vobizService.handleStatusCallback(callSid, duration);
   }
   res.sendStatus(200);
 });
@@ -1670,7 +1733,7 @@ app.post('/api/twilio/calls/outbound', async (req, res) => {
   }
 
   try {
-    const result = await twilioService.initiateOutboundCall({
+    const result = await vobizService.initiateOutboundCall({
       to: to.trim(),
       customerName,
       callReason: callReason || 'order_confirmation',
@@ -1694,7 +1757,7 @@ app.all('/api/twilio/voice/outbound-twiml', async (req, res) => {
     'Namaskara! This is Zyro AI calling from TrendVibe Store. We are checking in regarding your order. How can I help you today?';
   const host = req.headers.host;
 
-  const twiml = await twilioService.handleOutboundCallTwiML({
+  const twiml = await vobizService.handleOutboundCallTwiML({
     callSid,
     speechText,
     hostHeader: host,
@@ -1738,7 +1801,7 @@ app.post('/api/twilio/voice/simulate', async (req, res) => {
 
   try {
     if (action === 'start') {
-      const twiml = await twilioService.handleInboundCall({
+      const twiml = await vobizService.handleInboundCall({
         callSid: activeSid,
         from: callerNumber,
         to: '+1 800-TRENDVIBE',
@@ -1751,7 +1814,7 @@ app.post('/api/twilio/voice/simulate', async (req, res) => {
         message: 'Inbound call connected to Customer Enquiry Bot',
       });
     } else {
-      const twiml = await twilioService.handleGatherSpeech({
+      const twiml = await vobizService.handleGatherSpeech({
         callSid: activeSid,
         speechResult: speechInput || 'Tell me about Dolo 650',
         from: callerNumber,
@@ -1791,7 +1854,7 @@ app.get('/api/orders/track/:orderId', (req, res) => {
 
 app.get('/api/twilio/calls/analytics', async (req, res) => {
   const user = getAuthUser(req);
-  const calls = await twilioService.getCallHistory();
+  const calls = await vobizService.getCallHistory();
   const orders = db.getOrders();
 
   let filteredCalls = calls;
@@ -1835,15 +1898,16 @@ app.get('/api/twilio/calls/analytics', async (req, res) => {
 
 app.get('/api/twilio/calls/history', async (req, res) => {
   const user = getAuthUser(req);
-  const calls = await twilioService.getCallHistory();
+  const vobizCalls = await vobizService.getCallHistory();
+  const allCalls = [...vobizCalls];
 
   if (user && user.role === 'seller' && user.id !== 'usr-customer-1') {
     const sellerProductIds = new Set(db.getProducts({ sellerId: user.id }).map((p) => p.id));
-    const sellerCalls = calls.filter((c) => !c.resolvedProductId || sellerProductIds.has(c.resolvedProductId));
+    const sellerCalls = allCalls.filter((c: any) => !c.resolvedProductId || sellerProductIds.has(c.resolvedProductId));
     return res.json(sellerCalls);
   }
 
-  res.json(calls);
+  res.json(allCalls);
 });
 
 // ==========================================
@@ -1927,6 +1991,158 @@ app.post('/api/sms/send-tracking-link', async (req, res) => {
   const recipient = phone || order.shippingAddress.phone || order.customerPhone || '+91 98450 12345';
   const result = await smsService.sendTrackingLinkSms(recipient, order.orderNumber, trackingDetails.trackingUrl, trackingDetails.estimatedDeliveryDate);
   res.json(result);
+});
+
+// ==========================================
+// ELEVENLABS VOICE AGENT & BACKEND API ROUTES
+// ==========================================
+
+// Config status for the frontend
+app.get('/api/voice-assistant/config', (_req, res) => {
+  res.json({
+    provider: 'elevenlabs',
+    agentId: process.env.ELEVENLABS_AGENT_ID || 'agent_9401m63qfb47fe3atajs7ccv9xsb',
+    isConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
+  });
+});
+
+// Get signed URL for ElevenLabs conversation if needed (placeholder for future use)
+app.get('/api/elevenlabs/signed-url', async (_req, res) => {
+  try {
+    const agentId = process.env.ELEVENLABS_AGENT_ID || 'agent_9401m63qfb47fe3atajs7ccv9xsb';
+    const apiKey = process.env.ELEVENLABS_API_KEY;
+
+    if (!apiKey) {
+      return res.status(400).json({ error: 'ELEVENLABS_API_KEY not configured' });
+    }
+
+    const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`, {
+      method: 'GET',
+      headers: {
+        'xi-api-key': apiKey,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to get signed URL from ElevenLabs');
+    }
+
+    const data = await response.json();
+    res.json(data);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+
+// Tool: Search products in live catalog
+app.post('/api/voice-assistant/tools/search-products', (req, res) => {
+  try {
+    const result = voiceTools.searchProducts(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Tool: Get product pricing, MRP, stock & specs
+app.post('/api/voice-assistant/tools/get-product-details', (req, res) => {
+  try {
+    const result = voiceTools.getProductDetails(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Tool: Get delivery timelines & express eligibility
+app.post('/api/voice-assistant/tools/get-delivery-info', (req, res) => {
+  try {
+    const result = voiceTools.getDeliveryInfo(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Tool: Get category return policy
+app.post('/api/voice-assistant/tools/get-return-policy', (req, res) => {
+  try {
+    const result = voiceTools.getReturnPolicy(req.body);
+    res.json(result);
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ElevenLabs Knowledge Context Endpoint for AI Agent prompt synchronization
+app.get('/api/voice-assistant/knowledge-context', async (_req, res) => {
+  try {
+    // Reusing the same structure but generic naming
+    const products = db.getProducts({ status: 'published' });
+    const categories = Array.from(new Set(products.map((p) => p.category)));
+
+    const productLines = products.map((p, index) => {
+      const inStock = (p.stock?.available ?? 0) > 0;
+      const stockText = inStock ? `In Stock (${p.stock.available} units available)` : 'Out of Stock';
+      const specs = Object.entries(p.specifications || {})
+        .map(([k, v]) => `${k}: ${v}`)
+        .join(', ');
+
+      return `${index + 1}. [${p.category.toUpperCase()}] ${p.name}: ₹${p.price}. ${stockText}. Specs: ${specs}.`;
+    });
+
+    res.json({
+      success: true,
+      context: `TrendVibe Inventory:\n${productLines.join('\n')}`,
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Save completed voice session outcome & update lead/enquiry
+app.post('/api/voice-assistant/session/complete', (req, res) => {
+  try {
+    const { leadId, enquiryId, summary, durationSeconds } = req.body;
+
+    let updatedLead = false;
+    let updatedEnquiry = false;
+
+    if (leadId) {
+      const existingLead = db.getLeadById(leadId);
+      if (existingLead) {
+        const sessionNote = `\n[AI Voice Assistant Session - ${new Date().toLocaleTimeString()}]: ${summary || 'Voice conversation concluded.'}`;
+        db.updateLead(leadId, {
+          notes: (existingLead.notes || '') + sessionNote,
+        });
+        updatedLead = true;
+      }
+    }
+
+    if (enquiryId) {
+      const existingEnquiries = db.getEnquiries();
+      const existing = existingEnquiries.find((e) => e.id === enquiryId);
+      if (existing) {
+        db.createOrUpdateEnquiry({
+          ...existing,
+          id: existing.id,
+          question: `${existing.question}\n[AI Voice Assistant Notes]: ${summary || 'Voice conversation concluded.'}`,
+        });
+        updatedEnquiry = true;
+      }
+    }
+
+    res.json({
+      success: true,
+      updatedLead,
+      updatedEnquiry,
+      durationSeconds: Number(durationSeconds) || 0,
+    });
+  } catch (err: any) {
+    console.error('Session complete error:', err);
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // ==========================================

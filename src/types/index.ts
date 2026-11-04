@@ -113,6 +113,7 @@ export interface Product {
   sellerName: string;
   instagramUrl?: string;
   officialSourceUrl?: string;
+  amazonUrl?: string;
   pdfDocName?: string;
   pdfDocUrl?: string;
   pdfExtractedText?: string;
@@ -379,4 +380,5 @@ export interface CustomerLead {
   createdAt: string;
   updatedAt: string;
 }
+
 

@@ -298,7 +298,7 @@ export const CustomerDashboard: React.FC = () => {
 
                     <div className="text-xs text-slate-600 space-y-1">
                       <div className="font-semibold text-slate-900 truncate">
-                        {ord.items.map((it) => `${it.quantity}x ${it.productName}`).join(', ')}
+                        {(ord.items || []).map((it) => `${it.quantity}x ${it.productName}`).join(', ')}
                       </div>
                       <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1">
                         <span>Total: ₹{ord.totalAmount.toLocaleString('en-IN')}</span>

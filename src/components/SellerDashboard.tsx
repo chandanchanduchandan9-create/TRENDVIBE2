@@ -12,6 +12,7 @@ import {
   CustomerLead,
 } from '../types/index.ts';
 import { api } from '../services/api.ts';
+import { CallHistoryModal } from './CallHistoryModal.tsx';
 import { parsePdfFile } from '../services/pdfParser.ts';
 import { isProductExpress30MinEligible } from '../utils/delivery.ts';
 import {
@@ -71,6 +72,7 @@ export const SellerDashboard: React.FC = () => {
 
   // Modals
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
+  const [showCallHistoryModal, setShowCallHistoryModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isRestockOpen, setIsRestockOpen] = useState(false);
   const [restockTargetProduct, setRestockTargetProduct] = useState<Product | null>(null);
@@ -93,6 +95,7 @@ export const SellerDashboard: React.FC = () => {
   // Photo Upload State for Add/Edit Product Form
   const [imageUploading, setImageUploading] = useState(false);
   const [newImageUrlInput, setNewImageUrlInput] = useState('');
+  const [isImportingAmazon, setIsImportingAmazon] = useState(false);
 
   // New Product Form State (without Kannada name)
   const initialProductForm: Partial<Product> = {
@@ -110,6 +113,7 @@ export const SellerDashboard: React.FC = () => {
     stock: { onHand: 50, reserved: 0, available: 50, lowStockThreshold: 10 },
     instagramUrl: '',
     officialSourceUrl: '',
+    amazonUrl: '',
     pdfDocName: '',
     pdfDocUrl: '',
     pdfExtractedText: '',
@@ -131,6 +135,33 @@ export const SellerDashboard: React.FC = () => {
     },
   };
   const [productForm, setProductForm] = useState<Partial<Product>>(initialProductForm);
+
+  const handleImportAmazonData = async () => {
+    if (!productForm.amazonUrl || !productForm.amazonUrl.includes('amazon.')) {
+      showToast('Please enter a valid Amazon product URL first.', 'error');
+      return;
+    }
+
+    setIsImportingAmazon(true);
+    try {
+      const res = await api.importExternalProductData(productForm.amazonUrl);
+      if (res.product) {
+        setProductForm((prev) => ({
+          ...prev,
+          ...res.product,
+          amazonUrl: prev.amazonUrl, // preserve the url
+          // preserve local IDs if editing
+          id: prev.id,
+          sellerId: prev.sellerId,
+        }));
+        showToast('Successfully imported live product knowledge and data from Amazon!', 'success');
+      }
+    } catch (err: any) {
+      showToast(`Amazon import failed: ${err.message}`, 'error');
+    } finally {
+      setIsImportingAmazon(false);
+    }
+  };
 
   // Handle Photo File Upload (JPG, PNG, WebP)
   const handleImageFilesUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -597,18 +628,6 @@ export const SellerDashboard: React.FC = () => {
           <DollarSign className="w-4 h-4" />
           <span>Confidential Finance Dashboard</span>
         </button>
-
-        <button
-          onClick={() => setActiveSubTab('voice_calls' as any)}
-          className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
-            activeSubTab === ('voice_calls' as any)
-              ? 'bg-emerald-600 text-white shadow-xs'
-              : 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border border-emerald-200 font-bold'
-          }`}
-        >
-          <PhoneForwarded className="w-4 h-4 text-emerald-600" />
-          <span>Voice AI Enquiries & Call Orders</span>
-        </button>
       </div>
 
       {/* TAB 1: PRODUCT CATALOGUE */}
@@ -884,7 +903,7 @@ export const SellerDashboard: React.FC = () => {
                       )}
                     </div>
                     <div className="text-xs text-slate-600">
-                      {ord.items.map((it) => `${it.quantity}x ${it.productName}`).join(', ')}
+                      {(ord.items || []).map((it) => `${it.quantity}x ${it.productName}`).join(', ')}
                     </div>
                     <div className="text-[11px] text-slate-400">
                       Deliver to: {ord.shippingAddress.street}, {ord.shippingAddress.city} - {ord.shippingAddress.pincode}
@@ -1168,13 +1187,22 @@ export const SellerDashboard: React.FC = () => {
               </p>
             </div>
 
-            <button
-              onClick={() => openCallingGateway()}
-              className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition cursor-pointer"
-            >
-              <PhoneForwarded className="w-4 h-4" />
-              <span>Manual Outbound Call Gateway</span>
-            </button>
+            <div className="flex items-center gap-2 flex-wrap">
+              <button
+                onClick={() => setShowCallHistoryModal(true)}
+                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/15 flex items-center gap-2 transition cursor-pointer shadow-sm"
+              >
+                <PhoneCall className="w-4 h-4 text-emerald-400" />
+                <span>Call History</span>
+              </button>
+              <button
+                onClick={() => openCallingGateway()}
+                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition cursor-pointer"
+              >
+                <PhoneForwarded className="w-4 h-4" />
+                <span>Manual Outbound Call Gateway</span>
+              </button>
+            </div>
           </div>
 
           {/* Enquiries Metrics Row */}
@@ -1368,7 +1396,7 @@ export const SellerDashboard: React.FC = () => {
                         <div className="text-[11px] space-y-1">
                           {enq.customerObjections && enq.customerObjections.length > 0 && (
                             <div className="text-amber-800 font-medium">
-                              <strong>Objections / Concerns:</strong> {enq.customerObjections.join(', ')}
+                              <strong>Objections / Concerns:</strong> {(enq.customerObjections || []).join(', ')}
                             </div>
                           )}
                           {enq.followupRequired && (
@@ -1553,6 +1581,51 @@ export const SellerDashboard: React.FC = () => {
 
             <form onSubmit={handleSaveProduct} className="space-y-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="sm:col-span-2 space-y-3 bg-indigo-50/30 p-4 rounded-2xl border border-indigo-100">
+                  <div className="flex items-center justify-between">
+                    <label className="block font-black text-indigo-900 text-[11px] uppercase tracking-wider flex items-center gap-1.5">
+                      <ExternalLink className="w-3.5 h-3.5" />
+                      Import Live Product Knowledge (Amazon / External)
+                    </label>
+                    <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full uppercase">
+                      Gemini Grounded Import
+                    </span>
+                  </div>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <Database className="w-4 h-4 text-indigo-400 absolute left-3 top-3" />
+                      <input
+                        type="url"
+                        value={productForm.amazonUrl || ''}
+                        onChange={(e) => setProductForm({ ...productForm, amazonUrl: e.target.value })}
+                        placeholder="Paste Amazon Product URL (e.g. https://amazon.in/dp/...)"
+                        className="w-full pl-9 pr-3 py-2.5 bg-white border border-indigo-200 rounded-xl text-xs text-slate-900 placeholder:text-slate-400 focus:border-indigo-500 focus:outline-none shadow-sm"
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      disabled={isImportingAmazon || !productForm.amazonUrl}
+                      onClick={handleImportAmazonData}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-300 text-white font-black text-xs rounded-xl shadow-md transition-all flex items-center gap-2 whitespace-nowrap cursor-pointer"
+                    >
+                      {isImportingAmazon ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          <span>Importing...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Cloud className="w-4 h-4" />
+                          <span>Import Data</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+                  <p className="text-[10px] text-indigo-600 font-medium">
+                    * AI will visit the URL, extract specifications, current live price, and product images automatically.
+                  </p>
+                </div>
+
                 <div className="sm:col-span-2">
                   <label className="block font-semibold text-slate-700 mb-1">Product Title</label>
                   <input
@@ -2277,6 +2350,8 @@ export const SellerDashboard: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Call History Modal */}
+      {showCallHistoryModal && <CallHistoryModal onClose={() => setShowCallHistoryModal(false)} />}
     </div>
   );
 };

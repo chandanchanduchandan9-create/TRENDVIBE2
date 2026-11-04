@@ -271,8 +271,6 @@
       "sellingUnit": "piece",
       "deliveryConfig": {
         "supportsExpress30Min": false,
-        "locationBasedSellingEnabled": false,
-        "deliverySpeed": "standard",
         "preparationMinutes": 15,
         "standardDeliveryDays": 2,
         "shippingFee": 25,
@@ -285,7 +283,9 @@
           "560068",
           "560034"
         ],
+        "locationBasedSellingEnabled": false,
         "serviceCity": "Bangalore",
+        "deliverySpeed": "standard",
         "quickDeliveryCharge": 40
       },
       "status": "published",
@@ -3959,6 +3959,23 @@
   },
   "callTransferLogs": [],
   "leads": [
+    {
+      "name": "Chandan Kumar",
+      "mobile": "+91 98450 12345",
+      "email": "chandanchanduchandan9@gmail.com",
+      "productInterest": "Apple iPhone 16",
+      "productId": "prod-iphone-16",
+      "productName": "Apple iPhone 16 (128GB, Ultramarine / Teal)",
+      "sellerId": "usr-seller-1",
+      "hasConsent": true,
+      "consentTimestamp": "2026-11-03T06:45:00Z",
+      "source": "lead_acquisition_form",
+      "id": "lead-5353ef46",
+      "status": "NEW",
+      "callStatus": "NOT_CALLED",
+      "createdAt": "2026-11-03T14:45:46.412Z",
+      "updatedAt": "2026-11-03T14:45:46.412Z"
+    },
     {
       "name": "Ramesh Patel",
       "mobile": "+91 90193 63368",

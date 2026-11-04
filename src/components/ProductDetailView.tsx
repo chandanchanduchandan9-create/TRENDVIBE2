@@ -374,7 +374,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
                     <div>
                       <span className="font-bold">⚡ 30-Minute Hyper-Local Express Delivery Eligible!</span>
                       <p className="text-emerald-700 mt-0.5">
-                        Dispatched instantly from local fulfillment hub. Serviceable pincodes: {product.deliveryConfig?.serviceablePincodes?.includes('*') ? 'All Bangalore PINs' : (product.deliveryConfig?.serviceablePincodes?.join(', ') || '560001, 560038, 560103, 560068, 560034, 560008')}.
+                        Dispatched instantly from local fulfillment hub. Serviceable pincodes: {product.deliveryConfig?.serviceablePincodes?.includes('*') ? 'All Bangalore PINs' : ((product.deliveryConfig?.serviceablePincodes || []).join(', ') || '560001, 560038, 560103, 560068, 560034, 560008')}.
                       </p>
                     </div>
                   </div>

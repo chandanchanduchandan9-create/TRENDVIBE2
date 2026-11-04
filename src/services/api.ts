@@ -249,6 +249,11 @@ export const api = {
       throw err;
     }
   },
+  importExternalProductData: (url: string) =>
+    request<{ success: boolean; product: Partial<Product>; message: string }>('/api/products/import-external', {
+      method: 'POST',
+      body: JSON.stringify({ url }),
+    }),
   deleteProduct: async (id: string) => {
     removeLocalCustomProduct(id);
     return request<{ success: boolean }>(`/api/products/${id}`, {
@@ -897,7 +902,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ phone, code }),
     }),
-
   getOtpSessionStatus: (phone: string) =>
     request<{
       phone: string;
@@ -905,4 +909,40 @@ export const api = {
       authenticatedAt?: string;
       authenticatedUntil?: string;
     }>(`/api/otp/session?phone=${encodeURIComponent(phone)}`),
+
+  // AI Website Voice Assistant (ElevenLabs Agent)
+  getVoiceAssistantConfig: () =>
+    request<{
+      provider: string;
+      isConfigured: boolean;
+      agentId: string;
+    }>('/api/voice-assistant/config'),
+
+  getElevenLabsSignedUrl: () =>
+    request<{
+      signed_url: string;
+    }>('/api/elevenlabs/signed-url'),
+
+  getAgentKnowledge: () =>
+    request<{
+      success: boolean;
+      context: string;
+    }>('/api/voice-assistant/knowledge-context'),
+
+  completeVoiceSession: (data: {
+    leadId?: string;
+    enquiryId?: string;
+    summary?: string;
+    durationSeconds?: number;
+  }) =>
+    request<{
+      success: boolean;
+      updatedLead: boolean;
+      updatedEnquiry: boolean;
+      durationSeconds: number;
+    }>('/api/voice-assistant/session/complete', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
 };
+

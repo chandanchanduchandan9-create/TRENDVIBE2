@@ -15,8 +15,10 @@ import {
   Zap,
   Mic,
   MicOff,
+  Volume2,
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { ElevenLabsAgent } from './ElevenLabsAgent.tsx';
 
 interface ChatMessage {
   id: string;
@@ -282,6 +284,11 @@ export const AIShoppingView: React.FC = () => {
             <div className="text-[10px] text-emerald-600 font-semibold">gemini-3.5-transcribe • Ready</div>
           </div>
         </div>
+      </div>
+
+      {/* ElevenLabs Voice AI Assistant */}
+      <div className="mb-8 max-w-lg mx-auto w-full">
+        <ElevenLabsAgent />
       </div>
 
       {/* Main Chat Interface Card */}

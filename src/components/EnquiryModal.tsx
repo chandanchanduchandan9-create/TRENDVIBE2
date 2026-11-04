@@ -11,7 +11,9 @@ import {
   HelpCircle,
   ShoppingBag,
   ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
+import { VoiceAssistantModal } from './VoiceAssistantModal.tsx';
 
 export const EnquiryModal: React.FC = () => {
   const {
@@ -30,6 +32,8 @@ export const EnquiryModal: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [submittedMessage, setSubmittedMessage] = useState(false);
+  const [submittedEnquiryId, setSubmittedEnquiryId] = useState<string | undefined>(undefined);
+  const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
   const [product, setProduct] = useState<Product | null>(null);
 
   useEffect(() => {
@@ -68,7 +72,7 @@ export const EnquiryModal: React.FC = () => {
 
     setLoading(true);
     try {
-      await api.createEnquiry({
+      const created = await api.createEnquiry({
         productId: product.id,
         productName: product.name,
         sellerId: product.sellerId,
@@ -78,6 +82,7 @@ export const EnquiryModal: React.FC = () => {
         question,
       });
 
+      setSubmittedEnquiryId(created?.id);
       setSubmittedMessage(true);
       showToast('Enquiry successfully delivered to seller!', 'success');
     } catch (err: any) {
@@ -158,7 +163,23 @@ export const EnquiryModal: React.FC = () => {
               Your inquiry has been logged in the merchant's seller dashboard. The seller will review your question and follow up directly.
             </p>
 
-            <div className="pt-3 flex justify-center gap-2">
+            <div className="p-3 bg-white/80 rounded-xl border border-emerald-100 text-[11px] text-slate-600">
+              Need immediate answers? Speak directly with our voice assistant in English, Hindi, or Kannada.
+            </div>
+
+            {/* AI Website Voice Assistant Button */}
+            <div className="pt-1">
+              <button
+                type="button"
+                onClick={() => setIsVoiceAssistantOpen(true)}
+                className="w-full py-3 px-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2.5 transition-all transform hover:-translate-y-0.5 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4 text-indigo-200" />
+                <span>Talk to Our AI Shopping Assistant</span>
+              </button>
+            </div>
+
+            <div className="pt-2 flex justify-center gap-2">
               <button
                 onClick={() => {
                   addToCart(product, 1);
@@ -249,6 +270,31 @@ export const EnquiryModal: React.FC = () => {
             </button>
           </form>
         )}
+
+        {/* Reusable Voice Assistant Modal */}
+        <VoiceAssistantModal
+          isOpen={isVoiceAssistantOpen}
+          onClose={() => setIsVoiceAssistantOpen(false)}
+          context={{
+            enquiryId: submittedEnquiryId,
+            productId: product.id,
+            productName: product.name,
+            productDetails: {
+              name: product.name,
+              brand: product.brand,
+              price: product.price,
+              mrp: product.mrp,
+              category: product.category,
+              inStock: (product.stock?.available ?? 0) > 0,
+              availableStock: product.stock?.available ?? 0,
+              express30Min: Boolean(product.deliveryConfig?.supportsExpress30Min),
+              kannadaName: product.kannadaName || '',
+              description: product.description || product.shortDescription || '',
+            },
+            customerName,
+            customerPhone,
+          }}
+        />
       </div>
     </div>
   );
