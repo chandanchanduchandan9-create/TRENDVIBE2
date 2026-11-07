@@ -24,6 +24,7 @@ import {
   Mail,
   Send,
   UserCheck,
+  CheckCircle2,
 } from 'lucide-react';
 
 interface ProductDetailViewProps {
@@ -466,31 +467,54 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
               </div>
             )}
 
-            {/* Seller PDF Knowledge Base & RAG Attachments */}
-            {attachedDocs.length > 0 && (
-              <div className="space-y-2 pt-2">
+            {/* Seller PDF Knowledge Base, Certificates & Manuals */}
+            {(attachedDocs.length > 0 || product.pdfDocName) && (
+              <div className="space-y-3 pt-4 border-t border-slate-200">
                 <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-bold uppercase tracking-wide text-indigo-700 flex items-center gap-1.5">
-                    <FileText className="w-3.5 h-3.5" />
-                    Seller Knowledge Base & PDF Manuals ({attachedDocs.length})
-                  </h4>
-                  <span className="text-[10px] text-slate-400">Indexed for Customer Enquiry Bot</span>
+                  <div className="flex items-center gap-2">
+                    <div className="bg-indigo-100 p-1.5 rounded-lg text-indigo-700">
+                      <FileText className="w-4 h-4" />
+                    </div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-slate-800">
+                      Specifications & Lab Certificates
+                    </h4>
+                  </div>
+                  <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full flex items-center gap-1">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Verified Document
+                  </span>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                
+                <div className="grid grid-cols-1 gap-2.5">
                   {attachedDocs.map((doc) => (
                     <div
                       key={doc.id}
                       onClick={() => setSelectedDocPreview(doc)}
-                      className="p-2.5 rounded-xl border border-indigo-100 bg-indigo-50/40 hover:bg-indigo-50 transition-colors flex items-center justify-between cursor-pointer"
+                      className="group p-3.5 rounded-2xl border border-indigo-200 bg-white hover:bg-indigo-50/50 hover:border-indigo-400 transition-all flex items-center justify-between cursor-pointer shadow-2xs hover:shadow-md"
                     >
-                      <div className="truncate">
-                        <div className="text-xs font-bold text-slate-900 truncate">{doc.fileName}</div>
-                        <div className="text-[10px] text-slate-500">{Math.round(doc.fileSizeBytes / 1024)} KB • {doc.sections.length} Sections</div>
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 bg-indigo-50 rounded-xl flex items-center justify-center text-indigo-600 group-hover:bg-indigo-100 transition-colors">
+                          <FileText className="w-5 h-5" />
+                        </div>
+                        <div className="truncate">
+                          <div className="text-[13px] font-extrabold text-slate-900 truncate">
+                            {doc.fileName}
+                          </div>
+                          <div className="text-[10px] text-slate-500 font-medium mt-0.5">
+                            {Math.round(doc.fileSizeBytes / 1024)} KB • Document Data Indexed for AI
+                          </div>
+                        </div>
                       </div>
-                      <span className="text-[10px] font-bold text-indigo-600 bg-white px-2 py-0.5 rounded shadow-2xs">View RAG</span>
+                      <button className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black rounded-lg shadow-sm hover:bg-indigo-700 transition-colors shrink-0">
+                        OPEN SPEC
+                      </button>
                     </div>
                   ))}
                 </div>
+                
+                <p className="text-[10px] text-slate-400 italic">
+                  Note: These documents are used by the AI Enquiry Bot to provide technically accurate responses.
+                </p>
               </div>
             )}
           </div>
@@ -534,19 +558,27 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
               </button>
             </div>
 
-            {/* Customer Enquiry Button */}
-            <div>
-              <button
-                onClick={() => openEnquiryModal(product.id)}
-                className="w-full py-2.5 px-3 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
-              >
-                <MessageSquare className="w-4 h-4 text-indigo-600" />
-                <span>Ask Seller a Question</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Customer Enquiry & Voice Actions */}
+      <div className="flex flex-col sm:flex-row gap-3">
+        <button
+          onClick={() => openEnquiryModal(product.id)}
+          className="flex-1 py-3 px-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/80 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer"
+        >
+          <MessageSquare className="w-4 h-4 text-indigo-600" />
+          <span>Ask Seller a Question</span>
+        </button>
+        
+        <button
+          onClick={() => startCallingBot(product)}
+          className="flex-1 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-50 text-white border border-indigo-400/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 cursor-pointer animate-in fade-in"
+        >
+          <Sparkles className="w-4 h-4 text-indigo-200" />
+          <span>Talk to AI Assistant</span>
+        </button>
       </div>
+    </div>
+  </div>
+</div>
 
       {/* RAG Knowledge Document Preview Modal */}
       {selectedDocPreview && (

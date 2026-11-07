@@ -14,6 +14,7 @@ import {
   Zap,
   Instagram,
   AlertTriangle,
+  FileText,
 } from 'lucide-react';
 
 interface ProductCardProps {
@@ -177,6 +178,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
               <span className="flex items-center gap-1 text-emerald-600 font-medium" title="Verified manufacturer specifications">
                 <ShieldCheck className="w-3.5 h-3.5" />
                 <span>Verified</span>
+              </span>
+            )}
+            {product.pdfDocName && (
+              <span className="flex items-center gap-1 text-indigo-600 font-bold bg-indigo-50 px-1.5 py-0.5 rounded" title="Product Manual / Certificate Attached">
+                <FileText className="w-3 h-3" />
+                <span>Manual</span>
               </span>
             )}
           </div>

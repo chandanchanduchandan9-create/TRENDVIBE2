@@ -40,10 +40,12 @@ interface AppContextType {
     hasExpressEligibleItems: boolean;
   };
 
-  activeTab: 'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition';
+  activeTab: 'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition' | 'seller-store';
   setActiveTab: (tab: any) => void;
   selectedProductId: string | null;
   openProduct: (id: string) => void;
+  selectedSellerId: string | null;
+  openSellerStore: (sellerId: string) => void;
   selectedEnquiryProductId: string | null;
   openEnquiryModal: (productId: string) => void;
   closeEnquiryModal: () => void;
@@ -113,7 +115,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const [activeTab, setActiveTab] = useState<'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition'>(() => {
+  const [activeTab, setActiveTab] = useState<'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition' | 'seller-store'>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get('view');
@@ -121,16 +123,27 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (isLeadParam) {
         return 'lead-acquisition';
       }
-      if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition'].includes(viewParam)) {
+      if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition', 'seller-store'].includes(viewParam)) {
         return viewParam as any;
       }
       if (params.get('product') || params.get('productId')) {
         return 'product-detail';
       }
+      if (params.get('seller') || params.get('sellerId')) {
+        return 'seller-store';
+      }
     } catch {}
     return 'storefront';
   });
   const [selectedProductId, setSelectedProductId] = useState<string | null>(null);
+  const [selectedSellerId, setSelectedSellerId] = useState<string | null>(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('seller') || params.get('sellerId');
+    } catch {
+      return null;
+    }
+  });
   const [selectedEnquiryProductId, setSelectedEnquiryProductId] = useState<string | null>(null);
 
   const [isCallingOpen, setIsCallingOpen] = useState(false);
@@ -147,7 +160,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const prodParam = params.get('product') || params.get('productId');
-    const enquireParam = params.get('enquire') || params.get('enquiryId');
+    const sellerParam = params.get('seller') || params.get('sellerId');
+    const enquireParam = params.get('enquire');
     const viewParam = params.get('view');
     const isLeadParam = params.get('lead') !== null || viewParam === 'lead-acquisition';
 
@@ -156,12 +170,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else if (prodParam) {
       setSelectedProductId(prodParam);
       setActiveTab('product-detail');
+    } else if (sellerParam) {
+      setSelectedSellerId(sellerParam);
+      setActiveTab('seller-store');
     }
 
     if (enquireParam) {
       setSelectedEnquiryProductId(enquireParam);
     }
-    if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition'].includes(viewParam)) {
+    if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition', 'seller-store'].includes(viewParam)) {
       setActiveTab(viewParam as any);
     }
   }, []);
@@ -405,6 +422,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const openSellerStore = (sellerId: string) => {
+    setSelectedSellerId(sellerId);
+    setActiveTab('seller-store');
+    updateUrlParam('seller', sellerId);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
   const openEnquiryModal = (productId: string) => {
     setSelectedEnquiryProductId(productId);
     updateUrlParam('enquire', productId);
@@ -481,6 +505,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         },
         selectedProductId,
         openProduct,
+        selectedSellerId,
+        openSellerStore,
         selectedEnquiryProductId,
         openEnquiryModal,
         closeEnquiryModal,

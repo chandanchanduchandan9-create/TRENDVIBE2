@@ -499,7 +499,9 @@ app.put('/api/orders/:id/status', (req, res) => {
 
 app.get('/api/seller/documents', (req, res) => {
   const user = getAuthUser(req);
-  const sellerId = user?.role === 'admin' ? undefined : user?.id;
+  // Only filter by sellerId if the requester is a seller (to see their own vault)
+  // Admins, Customers, and Guests should see documents (filtered by product on frontend)
+  const sellerId = user?.role === 'seller' ? user.id : undefined;
   const docs = db.getDocuments(sellerId);
   res.json(docs);
 });

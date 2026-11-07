@@ -9,8 +9,10 @@ import { CustomerDashboard } from './components/CustomerDashboard.tsx';
 import { SellerDashboard } from './components/SellerDashboard.tsx';
 import { AdminDashboard } from './components/AdminDashboard.tsx';
 import { LeadAcquisitionView } from './components/LeadAcquisitionView.tsx';
+import { SellerStorefrontView } from './components/SellerStorefrontView.tsx';
 import { EnquiryModal } from './components/EnquiryModal.tsx';
 import { LoginModal } from './components/LoginModal.tsx';
+import { VoiceAssistantModal } from './components/VoiceAssistantModal.tsx';
 import { CheckCircle2, AlertCircle, Info } from 'lucide-react';
 
 const MainApp: React.FC = () => {
@@ -19,7 +21,11 @@ const MainApp: React.FC = () => {
     activeTab,
     setActiveTab,
     selectedProductId,
+    selectedSellerId,
     toasts,
+    isCallingOpen,
+    endCallingBot,
+    activeCallingProduct,
   } = useApp();
 
   const [searchQuery, setSearchQuery] = useState('');
@@ -64,11 +70,36 @@ const MainApp: React.FC = () => {
         {activeTab === 'admin-dashboard' && <AdminDashboard />}
 
         {activeTab === 'lead-acquisition' && <LeadAcquisitionView />}
+
+        {activeTab === 'seller-store' && selectedSellerId && (
+          <SellerStorefrontView sellerId={selectedSellerId} />
+        )}
       </main>
 
       {/* Modals & Overlays */}
       <EnquiryModal />
       <LoginModal />
+      <VoiceAssistantModal
+        isOpen={isCallingOpen}
+        onClose={endCallingBot}
+        autoStart={true}
+        context={activeCallingProduct ? {
+          productId: activeCallingProduct.id,
+          productName: activeCallingProduct.name,
+          productDetails: {
+            name: activeCallingProduct.name,
+            brand: activeCallingProduct.brand,
+            price: activeCallingProduct.price,
+            mrp: activeCallingProduct.mrp,
+            category: activeCallingProduct.category,
+            inStock: activeCallingProduct.stock.available > 0,
+            availableStock: activeCallingProduct.stock.available,
+            express30Min: !!activeCallingProduct.deliveryConfig?.supportsExpress30Min,
+            kannadaName: activeCallingProduct.kannadaName,
+            description: activeCallingProduct.description,
+          }
+        } : undefined}
+      />
 
       {/* Toast Notification Container */}
       <div className="fixed bottom-6 left-6 z-50 flex flex-col gap-2 pointer-events-none max-w-sm">

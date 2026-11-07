@@ -52,10 +52,11 @@ import {
   Clock,
   UserCheck,
   Share2,
+  Store,
 } from 'lucide-react';
 
 export const SellerDashboard: React.FC = () => {
-  const { user, categories, showToast, openCallingGateway } = useApp();
+  const { user, categories, showToast, openCallingGateway, openSellerStore } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'products' | 'enquiries' | 'inventory' | 'delivery' | 'analytics' | 'finance'>('products');
   const [products, setProducts] = useState<Product[]>([]);
@@ -238,10 +239,6 @@ export const SellerDashboard: React.FC = () => {
         pdfDocName: parsed.fileName,
         pdfDocUrl: parsed.dataUrl,
         pdfExtractedText: parsed.extractedText,
-        // Pre-populate description if empty
-        description: prev.description?.trim()
-          ? prev.description
-          : `Verified product specifications from ${parsed.fileName}.\n${parsed.extractedText.slice(0, 300)}...`,
       }));
       setProductPdfSuccess(`Attached: ${parsed.fileName} (${(parsed.fileSizeBytes / 1024).toFixed(1)} KB) - Text extracted for Enquiry Bot`);
       showToast(`PDF accepted! Extracted ${parsed.extractedText.length} characters of text for Enquiry Bot.`, 'success');
@@ -551,6 +548,64 @@ export const SellerDashboard: React.FC = () => {
           >
             <UploadCloud className="w-4 h-4 text-indigo-400" />
             <span>Upload PDF Manual</span>
+          </button>
+        </div>
+      </div>
+      
+      {/* My Store Link & Share Banner */}
+      <div className="bg-white rounded-3xl border border-indigo-200 p-6 mb-8 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in slide-in-from-top-4 duration-500">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 shrink-0">
+            <Store className="w-6 h-6" />
+          </div>
+          <div>
+            <h3 className="font-bold text-slate-900 text-sm">Your Dedicated Storefront is Live!</h3>
+            <p className="text-[11px] text-slate-500 mt-0.5">
+              Share your unique store link with customers to showcase only your products.
+            </p>
+            <div className="mt-2 flex items-center gap-2">
+              <code className="bg-slate-100 px-2 py-1 rounded text-[10px] font-mono text-indigo-600 border border-slate-200">
+                {window.location.origin}/?seller={user?.id}
+              </code>
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(`${window.location.origin}/?seller=${user?.id}`);
+                  showToast('Store link copied to clipboard!', 'success');
+                }}
+                className="p-1.5 hover:bg-slate-100 rounded-lg text-slate-400 hover:text-indigo-600 transition-colors"
+                title="Copy Link"
+              >
+                <Copy className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={() => openSellerStore(user?.id || '')}
+            className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center gap-2 cursor-pointer"
+          >
+            <ExternalLink className="w-4 h-4" />
+            <span>Preview My Website</span>
+          </button>
+          <button
+            onClick={() => {
+              if (navigator.share) {
+                navigator.share({
+                  title: user?.storeName || 'My TrendVibe Store',
+                  text: `Check out my latest products at ${user?.storeName || 'TrendVibe'}!`,
+                  url: `${window.location.origin}/?seller=${user?.id}`,
+                });
+              } else {
+                navigator.clipboard.writeText(`${window.location.origin}/?seller=${user?.id}`);
+                showToast('Link copied for sharing!', 'success');
+              }
+            }}
+            className="px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-900 font-bold text-xs rounded-xl border border-slate-200 transition-all flex items-center gap-2 cursor-pointer"
+          >
+            <Share2 className="w-4 h-4 text-indigo-600" />
+            <span>Share Storefront</span>
           </button>
         </div>
       </div>
