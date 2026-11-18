@@ -369,7 +369,7 @@ export const api = {
       body: JSON.stringify(data),
     }),
   triggerEnquiryCall: (enquiryId: string) =>
-    request<{ success: boolean; message: string; enquiry: ProductEnquiry }>(
+    request<{ success: boolean; message: string; enquiry: ProductEnquiry; aiReply?: string; twilioCall?: any }>(
       `/api/enquiries/${encodeURIComponent(enquiryId)}/trigger-call`,
       { method: 'POST' }
     ),
@@ -399,10 +399,21 @@ export const api = {
       body: JSON.stringify(data),
     }),
   getLeads: () => request<CustomerLead[]>('/api/leads'),
-  triggerLeadCall: (leadId: string) =>
-    request<{ success: boolean; message: string; lead: CustomerLead }>(
+  triggerLeadCall: (leadId: string, customerInitiated = false) =>
+    request<{ success: boolean; message: string; lead: CustomerLead; aiReply?: string; twilioCall?: any }>(
       `/api/leads/${encodeURIComponent(leadId)}/trigger-call`,
-      { method: 'POST' }
+      {
+        method: 'POST',
+        body: JSON.stringify({ customerInitiated }),
+      }
+    ),
+  transferLeadToHuman: (leadId: string, reason?: string) =>
+    request<{ success: boolean; message: string; lead: CustomerLead }>(
+      `/api/leads/${encodeURIComponent(leadId)}/transfer-human`,
+      {
+        method: 'POST',
+        body: JSON.stringify({ reason }),
+      }
     ),
   getAiCallingConfig: () =>
     request<{
@@ -444,7 +455,7 @@ export const api = {
       }
     ),
   postCallWebhook: (data: any) =>
-    request<{ success: boolean; message: string; enquiry: ProductEnquiry }>(
+    request<{ success: boolean; message: string; enquiry?: ProductEnquiry; lead?: CustomerLead }>(
       '/api/webhooks/call-completed',
       {
         method: 'POST',
@@ -456,10 +467,12 @@ export const api = {
   chatWithBot: (data: {
     message: string;
     productId?: string;
+    productName?: string;
     category?: string;
     language?: 'en' | 'kn' | 'hi' | 'auto';
     isCallingSession?: boolean;
     customerId?: string;
+    customerName?: string;
     customerPhone?: string;
   }) =>
     request<{
@@ -614,7 +627,14 @@ export const api = {
     request<{
       isConfigured: boolean;
       defaultVoiceId: string;
+      agentId?: string;
     }>('/api/elevenlabs/config'),
+  getElevenLabsSignedUrl: (agentId?: string) =>
+    request<{
+      agentId: string;
+      signedUrl?: string;
+      isPrivateSignedUrl: boolean;
+    }>(`/api/elevenlabs/signed-url${agentId ? `?agentId=${encodeURIComponent(agentId)}` : ''}`),
   updateElevenLabsConfig: (data: { apiKey?: string; defaultVoiceId?: string }) =>
     request<{
       success: boolean;

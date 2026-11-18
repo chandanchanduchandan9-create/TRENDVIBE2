@@ -38,6 +38,7 @@ export interface BotChatInput {
   message: string;
   history?: { role: 'user' | 'model'; parts: { text: string }[] }[];
   productId?: string;
+  productName?: string;
   category?: string;
   language?: 'en' | 'kn' | 'hi' | 'auto';
   customerId?: string;
@@ -447,7 +448,8 @@ function trainedKnowledgeGuidance(
   currentProduct?: Product,
   customerName?: string,
   customerPhone?: string,
-  hostHeader?: string
+  hostHeader?: string,
+  productNameHint?: string
 ): BotChatResponse {
   const q = message.toLowerCase().trim();
   const allProducts = db.getProducts({ status: 'published' });
@@ -488,7 +490,8 @@ function trainedKnowledgeGuidance(
     return {
       reply: 'I am escalating your request to a senior customer support manager. Our executive will reach out to your phone number shortly.',
       kannadaReply: 'ನಾನು ನಿಮ್ಮ ವಿನಂತಿಯನ್ನು ಹಿರಿಯ ಬೆಂಬಲ ಅಧಿಕಾರಿಗೆ ರವಾನಿಸುತ್ತಿದ್ದೇನೆ.',
-      languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+      hindiReply: 'मैं आपका अनुरोध एक वरिष्ठ सहायता विशेषज्ञ को भेज रहा हूँ। हमारे प्रतिनिधि शीघ्र ही आपसे संपर्क करेंगे।',
+      languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
       citations: ['TrendVibe Customer Support Escalate Queue'],
       intent: 'HUMAN_SUPPORT',
       requiresHumanEscalation: true,
@@ -505,7 +508,8 @@ function trainedKnowledgeGuidance(
       return {
         reply: `The minimum order quantity for ${targetProduct.name} is ${minOrderQty} ${sellingUnit}.`,
         kannadaReply: `${targetProduct.name} ಗೆ ಕನಿಷ್ಠ ಆರ್ಡರ್ ಪ್ರಮಾಣ ${minOrderQty} ${sellingUnit} ಆಗಿದೆ.`,
-        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        hindiReply: `${targetProduct.name} के लिए न्यूनतम ऑर्डर मात्रा ${minOrderQty} ${sellingUnit} है।`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
         citations,
         intent: 'MINIMUM_ORDER',
       };
@@ -515,8 +519,9 @@ function trainedKnowledgeGuidance(
       const discountText = targetProduct.discountPercent > 0 ? ` (${targetProduct.discountPercent}% off MRP ₹${targetProduct.mrp})` : '';
       return {
         reply: `The price for ${targetProduct.name} is ₹${targetProduct.price.toLocaleString('en-IN')} per ${sellingUnit}${discountText}.`,
-        kannadaReply: `${targetProduct.name} ನ ಬೆಲೆ પ્રતિ ${sellingUnit}ಗೆ ₹${targetProduct.price} ಆಗಿದೆ.`,
-        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        kannadaReply: `${targetProduct.name} ನ ಬೆಲೆ ಪ್ರತಿ ${sellingUnit}ಗೆ ₹${targetProduct.price} ಆಗಿದೆ.`,
+        hindiReply: `${targetProduct.name} की कीमत ₹${targetProduct.price.toLocaleString('en-IN')} प्रति ${sellingUnit}${discountText} है।`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
         citations,
         intent: 'PRICE',
       };
@@ -527,7 +532,8 @@ function trainedKnowledgeGuidance(
       return {
         reply: avail > 0 ? `We currently have ${avail} ${sellingUnit}s in stock.` : `${targetProduct.name} is currently out of stock.`,
         kannadaReply: avail > 0 ? `ಪ್ರಸ್ತುತ ${avail} ${sellingUnit}ಗಳು ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಲಭ್ಯವಿದೆ.` : `ಸದ್ಯಕ್ಕೆ ಇದು ಸ್ಟಾಕ್‌ನಲ್ಲಿಲ್ಲ.`,
-        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        hindiReply: avail > 0 ? `हमारे पास वर्तमान में ${avail} ${sellingUnit} स्टॉक में उपलब्ध हैं।` : `${targetProduct.name} अभी स्टॉक में उपलब्ध नहीं है।`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
         citations,
         intent: 'STOCK',
       };
@@ -538,7 +544,8 @@ function trainedKnowledgeGuidance(
       return {
         reply: `${targetProduct.name} is ${speedText}`,
         kannadaReply: isExpress ? `ಇದು 30 ನಿಮಿಷಗಳ ಎಕ್ಸ್‌ಪ್ರೆಸ್ ಡೆಲಿವರಿಗೆ ಲಭ್ಯವಿದೆ.` : `ಇದು 2 ರಿಂದ 4 ದಿನಗಳಲ್ಲಿ ತಲುಪಲಿದೆ.`,
-        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        hindiReply: isExpress ? `${targetProduct.name} बैंगलोर में 30-मिनट एक्सप्रेस डिलीवरी के लिए उपलब्ध है।` : `${targetProduct.name} भारत भर में 2-4 दिनों में डिलीवर किया जाता है।`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
         citations,
         intent: 'DELIVERY',
       };
@@ -552,7 +559,8 @@ function trainedKnowledgeGuidance(
       return {
         reply: responseDetail,
         kannadaReply: targetProduct.kannadaName ? `${targetProduct.kannadaName}: ${responseDetail}` : responseDetail,
-        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        hindiReply: `${targetProduct.name} — कीमत ₹${targetProduct.price.toLocaleString('en-IN')}। ${targetProduct.shortDescription || targetProduct.description}${specsText ? ` मुख्य विवरण: ${specsText}।` : ''}`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
         citations: [...citations, ...(targetProduct.pdfDocName ? [targetProduct.pdfDocName] : [])],
         intent: 'SPECIFICATIONS',
       };
@@ -569,7 +577,8 @@ function trainedKnowledgeGuidance(
       return {
         reply: `I've prepared an order for ${qty}x "${targetProduct.name}" totaling ₹${totalAmount.toLocaleString('en-IN')}. Would you like me to confirm this order now?`,
         kannadaReply: `${qty}x "${targetProduct.name}" ಗೆ ಒಟ್ಟು ₹${totalAmount} ಆಗಿದೆ. ನಾನು ಆರ್ಡರ್ ದೃಢೀಕರಿಸಲೇ?`,
-        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        hindiReply: `मैंने ${qty}x "${targetProduct.name}" के लिए ₹${totalAmount.toLocaleString('en-IN')} का ऑर्डर तैयार किया है। क्या मैं इस ऑर्डर की पुष्टि करूँ?`,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
         citations,
         intent: 'PLACE_ORDER',
         orderProposal: {
@@ -589,11 +598,52 @@ function trainedKnowledgeGuidance(
         },
       };
     }
+
+    // Default grounded answer whenever a product is in focus (e.g. post-enquiry or post-lead chat)
+    const avail = targetProduct.stock.available;
+    const discountText = targetProduct.discountPercent > 0 ? ` (${targetProduct.discountPercent}% off MRP ₹${targetProduct.mrp})` : '';
+    const speedText = isExpress ? '30-Minute Express Delivery in Bangalore' : '2–4 day standard delivery across India';
+    const specsText = targetProduct.specifications
+      ? Object.entries(targetProduct.specifications).slice(0, 4).map(([k, v]) => `${k}: ${v}`).join('; ')
+      : '';
+    const pdfSnippet = targetProduct.pdfExtractedText ? ` Verified datasheet note: ${targetProduct.pdfExtractedText.slice(0, 220)}` : '';
+    const summaryReply = `${targetProduct.name} is priced at ₹${targetProduct.price.toLocaleString('en-IN')} per ${sellingUnit}${discountText} with ${avail > 0 ? `${avail} ${sellingUnit}s in stock` : 'limited stock'}. Delivery: ${speedText}. ${targetProduct.shortDescription || targetProduct.description || ''}${specsText ? ` Key specs: ${specsText}.` : ''}${pdfSnippet} Would you like me to help place an order, check a delivery PIN code, or connect you with our seller?`;
+
+    return {
+      reply: summaryReply,
+      kannadaReply: `${targetProduct.kannadaName || targetProduct.name}: ಬೆಲೆ ₹${targetProduct.price.toLocaleString('en-IN')}, ಲಭ್ಯವಿರುವ ಸ್ಟಾಕ್: ${avail} ${sellingUnit}. ${isExpress ? 'ಬೆಂಗಳೂರಿನಲ್ಲಿ 30-ನಿಮಿಷದ ಎಕ್ಸ್‌ಪ್ರೆಸ್ ಡೆಲಿವರಿ ಲಭ್ಯವಿದೆ.' : '2-4 ದಿನಗಳಲ್ಲಿ ಸ್ಟ್ಯಾಂಡರ್ಡ್ ಡೆಲಿವರಿ ಲಭ್ಯವಿದೆ.'}`,
+      hindiReply: `${targetProduct.name} की कीमत ₹${targetProduct.price.toLocaleString('en-IN')} प्रति ${sellingUnit}${discountText} है और स्टॉक में ${avail} उपलब्ध हैं। डिलीवरी: ${isExpress ? 'बैंगलोर में 30-मिनट एक्सप्रेस डिलीवरी' : '2-4 दिन मानक डिलीवरी'}। क्या आप ऑर्डर या थोक मूल्य के बारे में जानना चाहेंगे?`,
+      languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
+      citations,
+      intent: 'PRODUCT_OVERVIEW',
+      productContext: {
+        id: targetProduct.id,
+        name: targetProduct.name,
+        price: targetProduct.price,
+        availableStock: targetProduct.stock.available,
+        category: targetProduct.category,
+        isExpress30Min: isExpress,
+        minOrderQuantity: minOrderQty,
+        sellingUnit,
+      },
+    };
+  }
+
+  if (productNameHint && productNameHint.trim()) {
+    return {
+      reply: `Thank you for your enquiry about "${productNameHint.trim()}". I have logged your requirement for our verified merchant team. You can ask me to check commercial bulk pricing, delivery timelines, GST invoice options, or click "Call My Phone" / "Talk to Human" to speak with a specialist directly.`,
+      kannadaReply: `"${productNameHint.trim()}" ಕುರಿತ ನಿಮ್ಮ ವಿಚಾರಣೆಯನ್ನು ದಾಖಲಿಸಲಾಗಿದೆ. ಬೆಲೆ, ಡೆಲಿವರಿ ಅಥವಾ ಮಾರಾಟಗಾರರೊಂದಿಗೆ ಮಾತನಾಡಲು ಕೇಳಿ.`,
+      hindiReply: `"${productNameHint.trim()}" के बारे में आपकी पूछताछ दर्ज कर ली गई है। आप थोक मूल्य, डिलीवरी समय, या विशेषज्ञ से बात करने के लिए पूछ सकते हैं।`,
+      languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : /[\u0900-\u097F]/.test(message) ? 'hi' : 'en',
+      citations: [`Enquiry Reference: ${productNameHint.trim()}`],
+      intent: 'PRODUCT_OVERVIEW',
+    };
   }
 
   return {
     reply: `Welcome to TrendVibe Store! I am the Customer Enquiry Bot. I can help you with product specifications, live order tracking, voice ordering, and Razorpay payments. Which product or order can I assist you with today?`,
     kannadaReply: `ಟ್ರೆಂಡ್‌ವೈಬ್ ಸ್ಟೋರ್‌ಗೆ ಸ್ವಾಗತ! ನಾನು ಗ್ರಾಹಕ ವಿಚಾರಣೆ ಬೋಟ್. ಉತ್ಪನ್ನ ವಿವರಣೆ, ಲೈವ್ ಆರ್ಡರ್ ಟ್ರ್ಯಾಕಿಂಗ್ ಮತ್ತು ಆರ್ಡರ್‌ಗೆ ನಾನು ಸಹಾಯ ಮಾಡಬಲ್ಲೆ.`,
+    hindiReply: `ट्रेंडवाइब स्टोर में आपका स्वागत है! मैं आपका उत्पाद और ऑर्डर सहायक हूँ। आज मैं आपकी किस उत्पाद या ऑर्डर में मदद कर सकता हूँ?`,
     languageDetected: 'en',
     citations: ['TrendVibe Store Catalogue'],
     intent: 'OTHER',
@@ -604,8 +654,21 @@ function trainedKnowledgeGuidance(
 // MAIN CONVERSATION HANDLER (GEMINI + ORDER TRACKING + VOICE ORDERING)
 // =========================================================================
 export async function processBotConversation(input: BotChatInput): Promise<BotChatResponse> {
-  const currentProduct = input.productId ? db.getProductById(input.productId) : undefined;
   const allProducts = db.getProducts({ status: 'published' });
+  let currentProduct = input.productId ? db.getProductById(input.productId) : undefined;
+  if (!currentProduct && input.productName) {
+    const targetLower = input.productName.toLowerCase().trim();
+    const tokens = targetLower.split(/\s+/).filter((t) => t.length >= 3);
+    currentProduct =
+      allProducts.find((p) => p.name.toLowerCase() === targetLower) ||
+      allProducts.find((p) => p.name.toLowerCase().includes(targetLower) || targetLower.includes(p.name.toLowerCase())) ||
+      (tokens.length > 0
+        ? allProducts.find((p) => {
+            const pLower = `${p.name} ${p.brand}`.toLowerCase();
+            return tokens.some((tok) => pLower.includes(tok));
+          })
+        : undefined);
+  }
 
   // 0. Intercept 6-digit OTP Verification Attempt
   const digitMatch = input.message.match(/\b\d{6}\b/);
@@ -794,55 +857,71 @@ CURRENT PRODUCT IN FOCUS:
 ${currentProduct ? JSON.stringify({ ...currentProduct, isExpress30Min: isProductExpress30MinEligible(currentProduct) }, null, 2) : 'Store catalogue.'}
 `.trim();
 
-  // 4. Gemini Content Generation
-  try {
-    const prompt = `Customer: "${input.message}"
+  // 4. Gemini Content Generation (only when a real GEMINI_API_KEY is configured)
+  const hasRealGeminiKey = Boolean(
+    process.env.GEMINI_API_KEY &&
+      process.env.GEMINI_API_KEY.trim().length > 10 &&
+      process.env.GEMINI_API_KEY !== 'AIzaSy_demo_fallback_key'
+  );
+
+  if (hasRealGeminiKey) {
+    try {
+      const prompt = `Customer: "${input.message}"
+Preferred Response Language: ${input.language === 'hi' ? 'Hindi (Devanagari script)' : input.language === 'kn' ? 'Kannada script' : 'English'}
 Customer Name: ${input.customerName || 'Customer'}
 Customer Phone: ${input.customerPhone || 'Not provided'}
 Calling Session: ${input.isCallingSession ? 'LIVE PHONE CALL' : 'WEB CHAT'}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        temperature: 0.2,
-        tools: [{ googleSearch: {} }],
-      },
-    });
+      const response = await ai.models.generateContent({
+        model: 'gemini-4-hydrogen',
+        contents: prompt,
+        config: {
+          systemInstruction,
+          tools: [{ googleSearch: {} }],
+        },
+      });
 
-    const replyText = response.text || '';
-    if (replyText.trim().length > 5) {
-      const isEndingMessage =
-        /^(thank|thanks|bye|goodbye|dhanyavada|ಸಾಕು)/i.test(input.message.trim()) ||
-        /thank you for choosing|have a wonderful day|ಧನ್ಯವಾದಗಳು/i.test(replyText);
+      const replyText = response.text || '';
+      if (replyText.trim().length > 5) {
+        const isEndingMessage =
+          /^(thank|thanks|bye|goodbye|dhanyavada|ಸಾಕು)/i.test(input.message.trim()) ||
+          /thank you for choosing|have a wonderful day|ಧನ್ಯವಾದಗಳು/i.test(replyText);
 
-      return {
-        reply: replyText.trim(),
-        kannadaReply: input.language === 'kn' || /[\u0C80-\u0CFF]/.test(input.message) ? replyText.trim() : undefined,
-        languageDetected: /[\u0C80-\u0CFF]/.test(input.message) ? 'kn' : 'en',
-        citations: ['TrendVibe Store Catalogue & Gemini Voice AI Engine'],
-        intent,
-        isEnding: isEndingMessage,
-        productContext: currentProduct
-          ? {
-              id: currentProduct.id,
-              name: currentProduct.name,
-              price: currentProduct.price,
-              availableStock: currentProduct.stock.available,
-              category: currentProduct.category,
-              isExpress30Min: isProductExpress30MinEligible(currentProduct),
-              minOrderQuantity: currentProduct.minOrderQuantity || 1,
-              sellingUnit: currentProduct.sellingUnit || 'piece',
-            }
-          : undefined,
-      };
+        return {
+          reply: replyText.trim(),
+          kannadaReply: input.language === 'kn' || /[\u0C80-\u0CFF]/.test(input.message) ? replyText.trim() : undefined,
+          hindiReply: input.language === 'hi' || /[\u0900-\u097F]/.test(input.message) ? replyText.trim() : undefined,
+          languageDetected: input.language === 'kn' || /[\u0C80-\u0CFF]/.test(input.message) ? 'kn' : input.language === 'hi' || /[\u0900-\u097F]/.test(input.message) ? 'hi' : 'en',
+          citations: ['TrendVibe Store Catalogue & Gemini Voice AI Engine'],
+          intent,
+          isEnding: isEndingMessage,
+          productContext: currentProduct
+            ? {
+                id: currentProduct.id,
+                name: currentProduct.name,
+                price: currentProduct.price,
+                availableStock: currentProduct.stock.available,
+                category: currentProduct.category,
+                isExpress30Min: isProductExpress30MinEligible(currentProduct),
+                minOrderQuantity: currentProduct.minOrderQuantity || 1,
+                sellingUnit: currentProduct.sellingUnit || 'piece',
+              }
+            : undefined,
+        };
+      }
+    } catch (err: any) {
+      console.warn('Gemini API call note, using knowledge engine:', err.message || err);
     }
-  } catch (err: any) {
-    console.warn('Gemini API call note, using knowledge engine:', err.message || err);
   }
 
-  return trainedKnowledgeGuidance(input.message, currentProduct, input.customerName, input.customerPhone, input.hostHeader);
+  return trainedKnowledgeGuidance(
+    input.message,
+    currentProduct,
+    input.customerName,
+    input.customerPhone,
+    input.hostHeader,
+    input.productName
+  );
 }
 
 /**
@@ -862,7 +941,7 @@ export async function importExternalProductData(url: string): Promise<Partial<Pr
 
   try {
     const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
+      model: 'gemini-4-hydrogen',
       contents: prompt,
       config: {
         systemInstruction: 'You are an expert E-commerce Catalog Manager. Your goal is to extract accurate, structured product data from live web links with 100% precision.',

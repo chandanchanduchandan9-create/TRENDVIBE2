@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import { api } from '../services/api.ts';
-import { Product } from '../types/index.ts';
+import { Product, ProductEnquiry } from '../types/index.ts';
 import {
   MessageSquare,
   Send,
   Copy,
   Check,
   CheckCircle2,
-  HelpCircle,
   ShoppingBag,
-  ShieldCheck,
+  Sparkles,
 } from 'lucide-react';
+import { TalkToAIAssistant } from './TalkToAIAssistant.tsx';
 
 export const EnquiryModal: React.FC = () => {
   const {
@@ -27,17 +27,23 @@ export const EnquiryModal: React.FC = () => {
   const [customerPhone, setCustomerPhone] = useState(user?.phone || '+91 98450 12345');
   const [customerEmail, setCustomerEmail] = useState(user?.email || 'chandanchanduchandan9@gmail.com');
   const [question, setQuestion] = useState('');
+  const [hasConsent, setHasConsent] = useState(true);
   const [loading, setLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
-  const [submittedMessage, setSubmittedMessage] = useState(false);
+  const [submittedEnquiry, setSubmittedEnquiry] = useState<ProductEnquiry | null>(null);
   const [product, setProduct] = useState<Product | null>(null);
+  const [showTalkToAI, setShowTalkToAI] = useState(false);
 
   useEffect(() => {
     if (!selectedEnquiryProductId) {
       setProduct(null);
-      setSubmittedMessage(false);
+      setSubmittedEnquiry(null);
+      setQuestion('');
       return;
     }
+
+    setSubmittedEnquiry(null);
+    setQuestion('');
 
     async function load() {
       try {
@@ -68,7 +74,7 @@ export const EnquiryModal: React.FC = () => {
 
     setLoading(true);
     try {
-      await api.createEnquiry({
+      const created = await api.createEnquiry({
         productId: product.id,
         productName: product.name,
         sellerId: product.sellerId,
@@ -76,9 +82,12 @@ export const EnquiryModal: React.FC = () => {
         customerPhone,
         customerEmail,
         question,
+        hasConsent,
+        consentTimestamp: hasConsent ? new Date().toISOString() : undefined,
+        preferredCallback: hasConsent ? 'INSTANT_AI_CALL' : 'TEXT_ONLY',
       });
 
-      setSubmittedMessage(true);
+      setSubmittedEnquiry(created);
       showToast('Enquiry successfully delivered to seller!', 'success');
     } catch (err: any) {
       showToast(`Failed to send enquiry: ${err.message}`, 'error');
@@ -89,7 +98,7 @@ export const EnquiryModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs animate-in fade-in">
-      <div className="bg-white rounded-3xl max-w-lg w-full p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-3xl w-full max-w-lg p-6 shadow-2xl border border-slate-200 space-y-4 max-h-[92vh] overflow-y-auto transition-all">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-slate-100 pb-3">
           <div className="flex items-center gap-2.5">
@@ -150,33 +159,48 @@ export const EnquiryModal: React.FC = () => {
         </div>
 
         {/* Form Body or Success Confirmation */}
-        {submittedMessage ? (
-          <div className="p-6 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-3">
-            <CheckCircle2 className="w-10 h-10 text-emerald-600 mx-auto" />
-            <h4 className="font-extrabold text-slate-900 text-base">Enquiry Sent to Seller!</h4>
-            <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
-              Your inquiry has been logged in the merchant's seller dashboard. The seller will review your question and follow up directly.
-            </p>
+        {submittedEnquiry ? (
+          <div className="space-y-4">
+            <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl text-center space-y-3">
+              <CheckCircle2 className="w-9 h-9 text-emerald-600 mx-auto" />
+              <div className="space-y-1">
+                <h4 className="font-extrabold text-slate-900 text-base">Enquiry Sent to Seller!</h4>
+                <p className="text-xs text-slate-600 leading-relaxed max-w-md mx-auto">
+                  Your inquiry (<span className="font-mono font-bold text-slate-800">{submittedEnquiry.id}</span>) has been successfully logged with the seller.
+                </p>
+              </div>
 
-            <div className="pt-2 flex justify-center gap-2">
-              <button
-                onClick={() => {
-                  addToCart(product, 1);
-                  closeEnquiryModal();
-                  setActiveTab('cart');
-                }}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
-              >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>Add to Cart & Checkout</span>
-              </button>
+              <div className="pt-1 flex flex-wrap justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowTalkToAI(true)}
+                  className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <Sparkles className="w-3.5 h-3.5" />
+                  <span>Talk to AI Assistant</span>
+                </button>
 
-              <button
-                onClick={closeEnquiryModal}
-                className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
-              >
-                Close Window
-              </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    addToCart(product, 1);
+                    closeEnquiryModal();
+                    setActiveTab('cart');
+                  }}
+                  className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 cursor-pointer shadow-md"
+                >
+                  <ShoppingBag className="w-3.5 h-3.5" />
+                  <span>Add to Cart & Checkout</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={closeEnquiryModal}
+                  className="px-4 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 text-xs font-bold rounded-xl cursor-pointer"
+                >
+                  Close Window
+                </button>
+              </div>
             </div>
           </div>
         ) : (
@@ -233,6 +257,18 @@ export const EnquiryModal: React.FC = () => {
               />
             </div>
 
+            <label className="flex items-start gap-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl cursor-pointer text-[11px] text-slate-600">
+              <input
+                type="checkbox"
+                checked={hasConsent}
+                onChange={(e) => setHasConsent(e.target.checked)}
+                className="mt-0.5 rounded text-indigo-600 focus:ring-indigo-500 w-3.5 h-3.5 cursor-pointer"
+              />
+              <span>
+                I consent to TrendVibe Store and authorized seller representatives following up regarding <strong className="text-slate-800">{product.name}</strong>.
+              </span>
+            </label>
+
             <button
               type="submit"
               disabled={loading}
@@ -250,6 +286,17 @@ export const EnquiryModal: React.FC = () => {
           </form>
         )}
       </div>
+      {showTalkToAI && (
+        <TalkToAIAssistant
+          product={product}
+          productName={product.name}
+          customerName={customerName}
+          customerPhone={customerPhone}
+          enquiryId={submittedEnquiry?.id}
+          onClose={() => setShowTalkToAI(false)}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 };

@@ -623,7 +623,7 @@ export class TwilioService {
   }): Promise<string> {
     const { speechText, hostHeader, promptText, isEnd, useMediaStream, customerPhone, customerName } = options;
 
-    if (useMediaStream && hostHeader) {
+    if (useMediaStream && hostHeader && process.env.TWILIO_USE_MEDIA_STREAM === 'true') {
       return this.handleMediaStreamTwiML({
         callSid: '',
         customerPhone: customerPhone || '+91 98450 12345',
@@ -634,6 +634,7 @@ export class TwilioService {
 
     const protocol = hostHeader?.includes('localhost') ? 'http' : 'https';
     const baseUrl = hostHeader ? `${protocol}://${hostHeader}` : '';
+    const gatherActionUrl = baseUrl ? `${baseUrl}/api/twilio/voice/gather` : '/api/twilio/voice/gather';
 
     let audioTag = '';
 
@@ -662,7 +663,7 @@ export class TwilioService {
     return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
   ${audioTag}
-  <Gather input="speech" action="/api/twilio/voice/gather" method="POST" timeout="4" speechTimeout="auto" language="en-IN" hints="Dolo 650, Menthol Plus Balm, iPhone 16, price, stock, order, delivery, Karnataka, yes, cancel, confirm">
+  <Gather input="speech" action="${gatherActionUrl}" method="POST" timeout="4" speechTimeout="auto" language="en-IN" hints="Dolo 650, Menthol Plus Balm, iPhone 16, price, stock, order, delivery, Karnataka, yes, cancel, confirm, human, agent">
     <Say voice="Polly.Aditi" language="en-IN">${this.escapeXml(promptText || 'I am listening. Please speak now.')}</Say>
   </Gather>
   <Say voice="Polly.Aditi" language="en-IN">We did not receive any response. Thank you for choosing TrendVibe. Goodbye!</Say>

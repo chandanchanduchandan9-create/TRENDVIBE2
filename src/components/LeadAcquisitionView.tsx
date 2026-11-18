@@ -16,7 +16,9 @@ import {
   ShieldCheck,
   ArrowRight,
   FileText,
+  Sparkles,
 } from 'lucide-react';
+import { TalkToAIAssistant } from './TalkToAIAssistant.tsx';
 
 export const LeadAcquisitionView: React.FC = () => {
   const { user, showToast } = useApp();
@@ -32,6 +34,7 @@ export const LeadAcquisitionView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [submittedLead, setSubmittedLead] = useState<any | null>(null);
+  const [showTalkToAI, setShowTalkToAI] = useState(false);
 
   // Load product list for interest dropdown
   useEffect(() => {
@@ -135,7 +138,8 @@ export const LeadAcquisitionView: React.FC = () => {
       });
 
       setSubmittedLead(res.lead);
-      showToast('Lead submitted successfully! Details recorded.', 'success');
+      setShowTalkToAI(false);
+      showToast('Lead submitted successfully! Click "Talk to AI" anytime to chat or speak with AI.', 'success');
     } catch (err: any) {
       showToast(`Submission failed: ${err.message}`, 'error');
     } finally {
@@ -145,6 +149,7 @@ export const LeadAcquisitionView: React.FC = () => {
 
   const handleResetForm = () => {
     setSubmittedLead(null);
+    setShowTalkToAI(false);
     setNotes('');
     setHasConsent(false);
   };
@@ -226,9 +231,19 @@ export const LeadAcquisitionView: React.FC = () => {
               </div>
             </div>
 
-            {/* Actions: Stays on form without redirecting to website */}
+            {/* Actions: Submit Another Consultation */}
             <div className="pt-2 flex flex-wrap justify-center items-center gap-3">
               <button
+                type="button"
+                onClick={() => setShowTalkToAI(true)}
+                className="px-5 py-2.5 bg-purple-600 hover:bg-purple-700 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer"
+              >
+                <Sparkles className="w-4 h-4" />
+                <span>Talk to AI Assistant</span>
+              </button>
+
+              <button
+                type="button"
                 onClick={handleResetForm}
                 className="px-5 py-2.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl cursor-pointer shadow-sm transition-colors"
               >
@@ -399,6 +414,17 @@ export const LeadAcquisitionView: React.FC = () => {
           </form>
         )}
       </div>
+      {showTalkToAI && (
+        <TalkToAIAssistant
+          product={selectedProdObj}
+          productName={submittedLead?.productInterest || productInterest}
+          customerName={submittedLead?.name || customerName}
+          customerPhone={submittedLead?.mobile || customerPhone}
+          leadId={submittedLead?.id}
+          onClose={() => setShowTalkToAI(false)}
+          showToast={showToast}
+        />
+      )}
     </div>
   );
 };

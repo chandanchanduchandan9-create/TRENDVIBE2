@@ -17,7 +17,7 @@ import { razorpayService } from './server/razorpay.ts';
 import { deepgramService } from './server/deepgram.ts';
 import { mongoService } from './server/mongodb.ts';
 import { elevenLabsService } from './server/elevenlabs.ts';
-import { vobizService } from './server/vobizService.ts';
+import { twilioService } from './server/twilioService.ts';
 import { amazonPaapiService } from './server/amazonPaapi.ts';
 import { getCourierTrackingDetails } from './server/courier.ts';
 import { smsService } from './server/sms.ts';
@@ -729,74 +729,171 @@ app.get('/api/leads', (req, res) => {
   return res.json(leads);
 });
 
-// Explicit, Authorized Trigger AI Call for a Lead (Must be initiated explicitly by authorized user)
-app.post('/api/leads/:id/trigger-call', (req, res) => {
+// Explicit, Authorized Trigger AI Call for a Lead (Initiated by authorized Seller/Admin OR consented Lead submitter)
+app.post('/api/leads/:id/trigger-call', async (req, res) => {
   const user = getAuthUser(req);
-  if (!user || (user.role !== 'seller' && user.role !== 'admin')) {
-    return res.status(403).json({ error: 'Unauthorized: Only authorized sellers and administrators can trigger AI calls.' });
-  }
-
   const { id } = req.params;
   const lead = db.getLeadById(id);
   if (!lead) {
     return res.status(404).json({ error: 'Lead not found' });
   }
 
-  // Update lead call status
-  db.updateLead(id, { callStatus: 'CALLING' });
+  const isMerchantOrAdmin = Boolean(user && (user.role === 'seller' || user.role === 'admin'));
+  const isConsentedCustomerAction = Boolean(req.body?.customerInitiated && lead.hasConsent);
 
-  // Async simulated call completion
-  setTimeout(() => {
-    db.updateLead(id, {
-      callStatus: 'COMPLETED',
+  if (!isMerchantOrAdmin && !isConsentedCustomerAction) {
+    return res.status(403).json({ error: 'Unauthorized: Only authorized sellers, administrators, or consented customers can trigger AI calls.' });
+  }
+
+  try {
+    const queryText = lead.notes
+      ? `Customer interested in ${lead.productInterest}. Requirement: ${lead.notes}`
+      : `Customer enquired about ${lead.productInterest}. Provide price, stock, and delivery details.`;
+
+    const [twilioCall, botRes] = await Promise.all([
+      twilioService.initiateOutboundCall({
+        to: lead.mobile,
+        customerName: lead.name,
+        callReason: 'product_enquiry',
+        productId: lead.productId,
+        hostHeader: req.headers.host,
+      }),
+      processBotConversation({
+        message: queryText,
+        productId: lead.productId,
+        productName: lead.productInterest,
+        customerId: lead.customerId,
+        customerName: lead.name,
+        customerPhone: lead.mobile,
+        isCallingSession: true,
+        hostHeader: req.headers.host,
+      }),
+    ]);
+
+    const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const existingTranscript = Array.isArray(lead.transcript) ? lead.transcript : [];
+    const newTranscript = [
+      ...existingTranscript,
+      {
+        speaker: 'AI Assistant',
+        text: twilioCall.initialSpeech || `Hello ${lead.name}! Calling from TrendVibe Store regarding your interest in ${lead.productInterest}.`,
+        timestamp: nowTime,
+      },
+      {
+        speaker: 'Customer',
+        text: lead.notes || `Interested in ${lead.productInterest}`,
+        timestamp: nowTime,
+      },
+      {
+        speaker: 'AI Assistant',
+        text: botRes.reply,
+        timestamp: nowTime,
+      },
+    ];
+
+    const updatedLead = db.updateLead(id, {
+      callStatus: twilioCall.isLiveTwilio ? 'CALLING' : 'COMPLETED',
       status: 'CONTACTED',
-      callSummary: `Outbound AI call completed to ${lead.name} (${lead.mobile}). Addressed interest regarding "${lead.productInterest}". Verified merchant catalogue specifications and availability. Customer contact qualified.`,
+      callSid: twilioCall.callSid,
+      callDuration: twilioCall.isLiveTwilio ? undefined : 64,
+      interestLevel: 'HIGH',
+      callSummary: twilioCall.isLiveTwilio
+        ? `Live Twilio AI call placed to ${lead.name} (${lead.mobile}) [SID: ${twilioCall.callSid}]. Initial AI answer prepared for "${lead.productInterest}".`
+        : `AI Voice Session completed for ${lead.name} (${lead.mobile}) regarding "${lead.productInterest}". ${botRes.reply}`,
+      transcript: newTranscript,
+      googleSheetsRowUrl: lead.googleSheetsRowUrl || 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0',
     });
-  }, 1500);
 
-  return res.json({
-    success: true,
-    message: `Authorized AI call initiated for ${lead.name}`,
-    lead,
-  });
+    return res.json({
+      success: true,
+      message: twilioCall.message || `AI call initiated for ${lead.name}`,
+      lead: updatedLead,
+      twilioCall,
+      aiReply: botRes.reply,
+    });
+  } catch (err: any) {
+    db.updateLead(id, { callStatus: 'FAILED' });
+    return res.status(500).json({ error: err.message || 'Failed to initiate AI call for lead' });
+  }
 });
 
 // Trigger Outbound AI Call for Enquiry
-app.post('/api/enquiries/:id/trigger-call', (req, res) => {
+app.post('/api/enquiries/:id/trigger-call', async (req, res) => {
   const { id } = req.params;
   const enquiry = db.getEnquiries().find((e) => e.id === id);
   if (!enquiry) {
     return res.status(404).json({ error: 'Enquiry not found' });
   }
 
-  db.createOrUpdateEnquiry({ ...enquiry, callStatus: 'CALLING' });
+  try {
+    const targetPhone = enquiry.customerPhone || '+91 98450 12345';
+    const customerQuestion = enquiry.question || enquiry.lastMessageSnippet || `Tell me about ${enquiry.productName}`;
 
-  setTimeout(() => {
-    const product = db.getProductById(enquiry.productId);
-    db.createOrUpdateEnquiry({
+    const [twilioCall, botRes] = await Promise.all([
+      twilioService.initiateOutboundCall({
+        to: targetPhone,
+        customerName: enquiry.customerName,
+        callReason: 'product_enquiry',
+        productId: enquiry.productId,
+        hostHeader: req.headers.host,
+      }),
+      processBotConversation({
+        message: customerQuestion,
+        productId: enquiry.productId,
+        productName: enquiry.productName,
+        customerId: enquiry.customerId,
+        customerName: enquiry.customerName,
+        customerPhone: targetPhone,
+        isCallingSession: true,
+        hostHeader: req.headers.host,
+      }),
+    ]);
+
+    const nowTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    const updatedEnquiry = db.createOrUpdateEnquiry({
       ...enquiry,
-      callStatus: 'COMPLETED',
-      callSummary: `Outbound AI call completed to ${enquiry.customerName} (${enquiry.customerPhone || '+91 98450 12345'}). Addressed enquiry regarding "${enquiry.question || enquiry.lastMessageSnippet}". Verified product stock and delivery timelines using store catalogue & RAG docs.`,
+      callStatus: twilioCall.isLiveTwilio ? 'CALLING' : 'COMPLETED',
+      callSummary: twilioCall.isLiveTwilio
+        ? `Live Twilio AI call placed to ${enquiry.customerName} (${targetPhone}) [SID: ${twilioCall.callSid}]. Answering "${customerQuestion}".`
+        : `AI Assistant addressed ${enquiry.customerName}'s enquiry on "${enquiry.productName}": ${botRes.reply}`,
       interestLevel: enquiry.interestLevel || 'HIGH',
-      customerQuestions: [enquiry.question || enquiry.lastMessageSnippet, 'Is stock available for instant Bangalore delivery?'],
-      customerObjections: enquiry.customerObjections || ['Checked competitor pricing & verified 7-day return policy'],
-      followupRequired: 'Follow up with Razorpay checkout link via SMS/WhatsApp.',
+      customerQuestions: Array.from(new Set([...(enquiry.customerQuestions || []), customerQuestion])),
+      followupRequired: botRes.orderProposal ? 'Customer ready for checkout / payment link.' : (enquiry.followupRequired || 'Share order or payment link if requested.'),
       calledAt: new Date().toISOString(),
-      callDuration: 78,
-      callSid: `CA-OUTBOUND-${Date.now().toString(36).toUpperCase()}`,
+      callDuration: twilioCall.isLiveTwilio ? undefined : 72,
+      callSid: twilioCall.callSid,
       googleSheetsSynced: true,
-      googleSheetsRowUrl: 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0',
+      googleSheetsRowUrl: enquiry.googleSheetsRowUrl || 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0',
       transcript: [
-        { speaker: 'AI Assistant', text: `Hello ${enquiry.customerName}! Calling from ${product?.sellerName || 'TrendVibe Store'} regarding your enquiry about ${enquiry.productName}.`, timestamp: '00:02' },
-        { speaker: 'Customer', text: enquiry.question || 'Is this genuine and when will it deliver?', timestamp: '00:08' },
-        { speaker: 'AI Assistant', text: `Yes, ${enquiry.productName} is 100% verified original with 1-year manufacturer warranty. We can deliver in 30 minutes in Bangalore!`, timestamp: '00:15' },
-        { speaker: 'Customer', text: 'Great! Please text me the order payment link.', timestamp: '00:25' },
-        { speaker: 'AI Assistant', text: 'Sending you the link via SMS now. Thank you for choosing TrendVibe Store!', timestamp: '00:32' },
+        ...(enquiry.transcript || []),
+        {
+          speaker: 'AI Assistant',
+          text: twilioCall.initialSpeech || `Hello ${enquiry.customerName}! Calling regarding your enquiry on ${enquiry.productName}.`,
+          timestamp: nowTime,
+        },
+        {
+          speaker: 'Customer',
+          text: customerQuestion,
+          timestamp: nowTime,
+        },
+        {
+          speaker: 'AI Assistant',
+          text: botRes.reply,
+          timestamp: nowTime,
+        },
       ],
     });
-  }, 1200);
 
-  res.json({ success: true, message: 'AI Outbound phone call triggered to customer', enquiry });
+    res.json({
+      success: true,
+      message: twilioCall.message || 'AI phone call triggered to customer',
+      enquiry: updatedEnquiry,
+      twilioCall,
+      aiReply: botRes.reply,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || 'Failed to trigger AI call' });
+  }
 });
 
 // 1. n8n Lead Receiver & Validation Webhook (Step 4 & 5 of Flowchart)
@@ -867,10 +964,11 @@ app.post('/api/webhooks/n8n/enquiry', (req, res) => {
   });
 });
 
-// 2. Post-Call Webhook (Step 11 & 12 of Flowchart)
+// 2. Post-Call Webhook (Step 11 & 12 of Flowchart - supports both Enquiry and Commercial Lead)
 app.post('/api/webhooks/call-completed', (req, res) => {
   const {
     enquiryId,
+    leadId,
     callSid,
     callStatus,
     callSummary,
@@ -884,8 +982,31 @@ app.post('/api/webhooks/call-completed', (req, res) => {
     transferReason,
   } = req.body;
 
-  if (!enquiryId) {
-    return res.status(400).json({ error: 'enquiryId is required' });
+  if (!enquiryId && !leadId) {
+    return res.status(400).json({ error: 'enquiryId or leadId is required' });
+  }
+
+  if (leadId) {
+    const existingLead = db.getLeadById(leadId);
+    if (!existingLead) {
+      return res.status(404).json({ error: 'Lead record not found' });
+    }
+    const updatedLead = db.updateLead(leadId, {
+      callSid: callSid || existingLead.callSid || `CA-AI-${Date.now().toString(36).toUpperCase()}`,
+      callStatus: callStatus || 'COMPLETED',
+      status: existingLead.status === 'NEW' ? 'CONTACTED' : existingLead.status,
+      callSummary: callSummary || existingLead.callSummary || 'AI conversation completed.',
+      interestLevel: interestLevel || existingLead.interestLevel || 'HIGH',
+      callDuration: callDuration || existingLead.callDuration || 45,
+      transcript: transcript || existingLead.transcript || [],
+      googleSheetsRowUrl: existingLead.googleSheetsRowUrl || 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0',
+    });
+
+    return res.json({
+      success: true,
+      message: 'AI conversation outcome & transcript stored on commercial lead.',
+      lead: updatedLead,
+    });
   }
 
   const existing = db.getEnquiries().find((e) => e.id === enquiryId);
@@ -918,7 +1039,7 @@ app.post('/api/webhooks/call-completed', (req, res) => {
   });
 });
 
-// 3. Human Transfer Escalation Endpoint (Step 10 of Flowchart)
+// 3. Human Transfer Escalation Endpoints (Step 10 of Flowchart)
 app.post('/api/enquiries/:id/transfer-human', (req, res) => {
   const { id } = req.params;
   const { reason } = req.body;
@@ -928,12 +1049,12 @@ app.post('/api/enquiries/:id/transfer-human', (req, res) => {
     return res.status(404).json({ error: 'Enquiry not found' });
   }
 
-  const transferReason = reason || 'Customer requested live human seller assistant during AI phone call.';
+  const transferReason = reason || 'Customer requested live human seller assistant during AI session.';
   const updatedTranscript = [
     ...(enquiry.transcript || []),
     {
       speaker: 'AI Agent (System)',
-      text: `Transferring call to live seller representative. Reason: ${transferReason}`,
+      text: `Transferring to live human representative. Reason: ${transferReason}`,
       timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
     },
   ];
@@ -941,14 +1062,45 @@ app.post('/api/enquiries/:id/transfer-human', (req, res) => {
     ...enquiry,
     humanTransferRequested: true,
     transferReason,
-    callSummary: `[HUMAN ESCALATED] AI Agent handed off call to live seller agent. Reason: ${transferReason}`,
+    callSummary: `[HUMAN ESCALATED] AI Agent handed off session to live seller agent. Reason: ${transferReason}`,
     transcript: updatedTranscript,
   });
 
   res.json({
     success: true,
-    message: 'Call transferred to live seller agent queue.',
+    message: 'Enquiry transferred to live seller agent queue.',
     enquiry: updatedEnquiry,
+  });
+});
+
+app.post('/api/leads/:id/transfer-human', (req, res) => {
+  const { id } = req.params;
+  const { reason } = req.body;
+  const lead = db.getLeadById(id);
+
+  if (!lead) {
+    return res.status(404).json({ error: 'Lead not found' });
+  }
+
+  const transferReason = reason || 'Customer requested live human seller assistant during AI session.';
+  const updatedTranscript = [
+    ...(lead.transcript || []),
+    {
+      speaker: 'AI Agent (System)',
+      text: `Transferring to live human representative. Reason: ${transferReason}`,
+      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    },
+  ];
+  const updatedLead = db.updateLead(id, {
+    status: 'CONTACTED',
+    callSummary: `[HUMAN ESCALATED] AI Agent handed off consultation lead to live seller agent. Reason: ${transferReason}`,
+    transcript: updatedTranscript,
+  });
+
+  res.json({
+    success: true,
+    message: 'Lead transferred to live seller agent queue.',
+    lead: updatedLead,
   });
 });
 
@@ -980,7 +1132,7 @@ app.post('/api/integrations/google-sheets/sync', (req, res) => {
 
 app.post('/api/bot/chat', async (req, res) => {
   const user = getAuthUser(req);
-  const { message, productId, category, language, isCallingSession } = req.body;
+  const { message, productId, productName, category, language, isCallingSession, customerName, customerPhone } = req.body;
 
   if (!message) {
     return res.status(400).json({ error: 'Message is required' });
@@ -990,11 +1142,12 @@ app.post('/api/bot/chat', async (req, res) => {
     const botResponse = await processBotConversation({
       message,
       productId,
+      productName,
       category,
       language: language || 'auto',
       customerId: user?.id,
-      customerName: user?.name,
-      customerPhone: user?.phone,
+      customerName: customerName || user?.name,
+      customerPhone: customerPhone || user?.phone,
       isCallingSession: !!isCallingSession,
       hostHeader: req.headers.host,
     });
@@ -1378,24 +1531,24 @@ app.get('/api/elevenlabs/audio/:audioId.mp3', (req, res) => {
 
 app.get('/api/twilio/config', (req, res) => {
   const host = req.headers.host;
-  const config = vobizService.getConfig(host);
+  const config = twilioService.getConfig(host);
   res.json(config);
 });
 
 app.post('/api/twilio/config', (req, res) => {
   const { accountSid, authToken, phoneNumber } = req.body;
-  vobizService.updateCredentials(accountSid, authToken, phoneNumber);
+  twilioService.updateCredentials(accountSid, authToken, phoneNumber);
   if (accountSid) process.env.TWILIO_ACCOUNT_SID = accountSid;
   if (authToken) process.env.TWILIO_AUTH_TOKEN = authToken;
   if (phoneNumber) process.env.TWILIO_PHONE_NUMBER = phoneNumber;
-  const config = vobizService.getConfig(req.headers.host);
+  const config = twilioService.getConfig(req.headers.host);
   res.json({ success: true, config });
 });
 
 // GET Central Human Support Phone Number Configuration
 app.get('/api/twilio/support-number', (req, res) => {
   const user = getAuthUser(req);
-  const settings = vobizService.getHumanSupportSettings();
+  const settings = twilioService.getHumanSupportSettings();
 
   // If user is not admin, mask phone number for privacy
   if (!user || user.role !== 'admin') {
@@ -1428,7 +1581,7 @@ app.post('/api/twilio/support-number', (req, res) => {
   const cleanPhone = rawPhone.replace(/[\s\-\(\)]/g, '');
 
   // Validate E.164 format: must start with + followed by country code and 7-14 digits
-  if (!vobizService.isValidE164(cleanPhone)) {
+  if (!twilioService.isValidE164(cleanPhone)) {
     db.updateHumanSupportPhone(rawPhone, 'NOT_CONFIGURED', user);
     return res.status(400).json({
       error: 'Invalid E.164 phone number format. Must start with "+" followed by country code and 7-14 digits (e.g. +919845012345).',
@@ -1461,7 +1614,7 @@ app.post('/api/twilio/support-number/test', async (req, res) => {
   const { phone } = req.body;
   const targetPhone = (phone || db.getPlatformSettings().humanSupportPhone || '').trim().replace(/[\s\-\(\)]/g, '');
 
-  if (!vobizService.isValidE164(targetPhone)) {
+  if (!twilioService.isValidE164(targetPhone)) {
     db.updateHumanSupportPhone(targetPhone, 'TEST_FAILED', user);
     return res.status(400).json({
       success: false,
@@ -1472,7 +1625,7 @@ app.post('/api/twilio/support-number/test', async (req, res) => {
   }
 
   // Generate test TwiML transfer response
-  const transferRes = await vobizService.generateCallTransferResponse({
+  const transferRes = await twilioService.generateCallTransferResponse({
     callSid: `TEST-TRANSFER-${Date.now()}`,
     from: user.phone || '+91 98450 12345',
     reason: 'Admin Panel Transfer Configuration Test',
@@ -1552,7 +1705,7 @@ app.post('/api/admin/test-ai-call', async (req, res) => {
     return res.status(400).json({ success: false, error: 'Customer consent verification is required before initiating an AI voice call.' });
   }
 
-  if (!vobizService.isValidE164(targetNumber)) {
+  if (!twilioService.isValidE164(targetNumber)) {
     return res.status(400).json({ success: false, error: 'Invalid E.164 phone number format (+91XXXXXXXXXX or similar).' });
   }
 
@@ -1569,7 +1722,7 @@ app.post('/api/admin/test-ai-call', async (req, res) => {
   }
 
   try {
-    const callResult = await vobizService.initiateOutboundCall({
+    const callResult = await twilioService.initiateOutboundCall({
       to: targetNumber,
       customerName: 'Test Admin User',
       callReason: 'custom_support',
@@ -1599,7 +1752,7 @@ app.post('/api/twilio/calls/transfer-human', async (req, res) => {
   const { callSid, from, reason } = req.body;
   const host = req.headers.host;
 
-  const result = await vobizService.generateCallTransferResponse({
+  const result = await twilioService.generateCallTransferResponse({
     callSid,
     from,
     reason: reason || 'Live human agent transfer requested during call session',
@@ -1629,7 +1782,7 @@ app.post('/api/twilio/voice/transfer-status', (req, res) => {
   const callSid = req.body.CallSid || req.body.callSid || `CALL-${Date.now()}`;
   const dialCallStatus = req.body.DialCallStatus || req.body.dialCallStatus || 'failed';
   const from = req.body.From || '+91 98450 12345';
-  const { humanSupportPhone } = vobizService.getHumanSupportSettings();
+  const { humanSupportPhone } = twilioService.getHumanSupportSettings();
 
   console.log(`[Twilio Transfer Webhook] CallSid: ${callSid}, DialCallStatus: ${dialCallStatus}`);
 
@@ -1687,7 +1840,7 @@ app.get('/api/twilio/transfer-logs', (req, res) => {
 });
 
 app.get('/api/twilio/calls', async (_req, res) => {
-  const calls = await vobizService.getCallHistory();
+  const calls = await twilioService.getCallHistory();
   res.json(calls);
 });
 
@@ -1700,7 +1853,7 @@ app.post('/api/twilio/voice/inbound', async (req, res) => {
 
   console.log(`[Twilio] Inbound Voice Call received from ${from} (CallSid: ${callSid})`);
 
-  const twiml = await vobizService.handleInboundCall({
+  const twiml = await twilioService.handleInboundCall({
     callSid,
     from: String(from),
     to: String(to),
@@ -1721,7 +1874,7 @@ app.post('/api/twilio/voice/gather', async (req, res) => {
 
   console.log(`[Twilio] Caller speech received: "${speechResult}" (Confidence: ${confidence})`);
 
-  const twiml = await vobizService.handleGatherSpeech({
+  const twiml = await twilioService.handleGatherSpeech({
     callSid,
     speechResult: String(speechResult),
     confidence,
@@ -1738,7 +1891,7 @@ app.post('/api/twilio/voice/status', (req, res) => {
   const callSid = req.body.CallSid;
   const duration = req.body.CallDuration ? parseInt(req.body.CallDuration, 10) : undefined;
   if (callSid) {
-    vobizService.handleStatusCallback(callSid, duration);
+    twilioService.handleStatusCallback(callSid, duration);
   }
   res.sendStatus(200);
 });
@@ -1753,7 +1906,7 @@ app.post('/api/twilio/calls/outbound', async (req, res) => {
   }
 
   try {
-    const result = await vobizService.initiateOutboundCall({
+    const result = await twilioService.initiateOutboundCall({
       to: to.trim(),
       customerName,
       callReason: callReason || 'order_confirmation',
@@ -1777,7 +1930,7 @@ app.all('/api/twilio/voice/outbound-twiml', async (req, res) => {
     'Namaskara! This is Zyro AI calling from TrendVibe Store. We are checking in regarding your order. How can I help you today?';
   const host = req.headers.host;
 
-  const twiml = await vobizService.handleOutboundCallTwiML({
+  const twiml = await twilioService.handleOutboundCallTwiML({
     callSid,
     speechText,
     hostHeader: host,
@@ -1821,7 +1974,7 @@ app.post('/api/twilio/voice/simulate', async (req, res) => {
 
   try {
     if (action === 'start') {
-      const twiml = await vobizService.handleInboundCall({
+      const twiml = await twilioService.handleInboundCall({
         callSid: activeSid,
         from: callerNumber,
         to: '+1 800-TRENDVIBE',
@@ -1834,7 +1987,7 @@ app.post('/api/twilio/voice/simulate', async (req, res) => {
         message: 'Inbound call connected to Customer Enquiry Bot',
       });
     } else {
-      const twiml = await vobizService.handleGatherSpeech({
+      const twiml = await twilioService.handleGatherSpeech({
         callSid: activeSid,
         speechResult: speechInput || 'Tell me about Dolo 650',
         from: callerNumber,
@@ -1874,7 +2027,7 @@ app.get('/api/orders/track/:orderId', (req, res) => {
 
 app.get('/api/twilio/calls/analytics', async (req, res) => {
   const user = getAuthUser(req);
-  const calls = await vobizService.getCallHistory();
+  const calls = await twilioService.getCallHistory();
   const orders = db.getOrders();
 
   let filteredCalls = calls;
@@ -1918,7 +2071,7 @@ app.get('/api/twilio/calls/analytics', async (req, res) => {
 
 app.get('/api/twilio/calls/history', async (req, res) => {
   const user = getAuthUser(req);
-  const vobizCalls = await vobizService.getCallHistory();
+  const vobizCalls = await twilioService.getCallHistory();
   const allCalls = [...vobizCalls];
 
   if (user && user.role === 'seller' && user.id !== 'usr-customer-1') {

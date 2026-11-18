@@ -334,9 +334,12 @@ export const SellerDashboard: React.FC = () => {
 
   const handleTriggerEnquiryCall = async (enquiryId: string) => {
     try {
-      await api.triggerEnquiryCall(enquiryId);
-      showToast('AI Outbound Phone Call triggered to customer!', 'success');
-      loadAllData();
+      const res = await api.triggerEnquiryCall(enquiryId);
+      if (res.enquiry) {
+        setEnquiries((prev) => prev.map((e) => (e.id === enquiryId ? res.enquiry : e)));
+      }
+      showToast(res.message || 'AI Outbound Phone Call triggered to customer!', 'success');
+      loadEnquiriesAndLeads(false);
     } catch (err: any) {
       showToast(`Call trigger error: ${err.message}`, 'error');
     }
@@ -344,9 +347,12 @@ export const SellerDashboard: React.FC = () => {
 
   const handleTransferToHuman = async (enquiryId: string) => {
     try {
-      await api.transferEnquiryToHuman(enquiryId, 'Customer requested live seller representative');
-      showToast('Enquiry transferred to live human agent queue!', 'success');
-      loadAllData();
+      const res = await api.transferEnquiryToHuman(enquiryId, 'Customer requested live seller representative');
+      if (res.enquiry) {
+        setEnquiries((prev) => prev.map((e) => (e.id === enquiryId ? res.enquiry : e)));
+      }
+      showToast(res.message || 'Enquiry transferred to live human agent queue!', 'success');
+      loadEnquiriesAndLeads(false);
     } catch (err: any) {
       showToast(`Transfer error: ${err.message}`, 'error');
     }
@@ -354,9 +360,12 @@ export const SellerDashboard: React.FC = () => {
 
   const handleTriggerLeadCall = async (leadId: string) => {
     try {
-      await api.triggerLeadCall(leadId);
-      showToast('Authorized AI Outbound Call initiated for lead!', 'success');
-      loadAllData();
+      const res = await api.triggerLeadCall(leadId);
+      if (res.lead) {
+        setLeads((prev) => prev.map((l) => (l.id === leadId ? res.lead : l)));
+      }
+      showToast(res.message || 'Authorized AI Outbound Call initiated for lead!', 'success');
+      loadEnquiriesAndLeads(false);
     } catch (err: any) {
       showToast(`Call trigger error: ${err.message}`, 'error');
     }
