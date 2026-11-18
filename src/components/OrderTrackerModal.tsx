@@ -23,7 +23,7 @@ interface OrderTrackerModalProps {
 }
 
 export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ orderId, onClose }) => {
-  const { showToast, openCallingGateway } = useApp();
+  const { showToast } = useApp();
   const [loading, setLoading] = useState(true);
   const [order, setOrder] = useState<Order | null>(null);
   const [tracking, setTracking] = useState<any | null>(null);
@@ -208,22 +208,6 @@ export const OrderTrackerModal: React.FC<OrderTrackerModalProps> = ({ orderId, o
               <span>{sendingSms ? 'Sending SMS...' : 'Send SMS Link'}</span>
             </button>
           </div>
-
-          <button
-            onClick={() => {
-              onClose();
-              openCallingGateway({
-                customerName: order.shippingAddress?.name || order.customerName || 'Customer',
-                customerPhone: order.shippingAddress?.phone || order.customerPhone || '+91 98450 12345',
-                callReason: 'delivery_tracking',
-                orderId: order.id,
-              });
-            }}
-            className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs sm:text-sm rounded-xl flex items-center gap-2 shadow-lg shadow-emerald-500/20 transition cursor-pointer"
-          >
-            <PhoneCall className="w-4 h-4" />
-            <span>Ask Enquiry Bot for Voice Update</span>
-          </button>
         </div>
       </div>
     </div>

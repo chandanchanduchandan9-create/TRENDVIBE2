@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-  const { user, categories, showToast, openCallingGateway } = useApp();
+  const { user, categories, showToast } = useApp();
   const [users, setUsers] = useState<User[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [analytics, setAnalytics] = useState<any | null>(null);
@@ -230,19 +230,10 @@ export const AdminDashboard: React.FC = () => {
             AI Voice Sales & Multi-Vendor Control Panel
           </h1>
           <p className="text-xs text-slate-300 mt-1 max-w-xl leading-relaxed">
-            Real-time control center for Twilio + Gemini AI phone calls, customer order tracking, multi-vendor product catalogues, and Razorpay transactions.
+            Real-time control center for AI-powered assistance, customer order tracking, multi-vendor product catalogues, and Razorpay transactions.
           </p>
         </div>
 
-        <div className="flex items-center gap-3 shrink-0">
-          <button
-            onClick={() => openCallingGateway()}
-            className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition cursor-pointer"
-          >
-            <PhoneForwarded className="w-4 h-4" />
-            <span>Launch Calling Gateway</span>
-          </button>
-        </div>
       </div>
 
       {/* AI Voice Call Management Center Metrics */}
@@ -254,7 +245,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <h2 className="text-lg font-black text-white">Real-Time AI Voice Call Management Section</h2>
-              <p className="text-xs text-slate-400">Live monitoring of Twilio telephony streams & Gemini AI conversation metrics</p>
+              <p className="text-xs text-slate-400">Live monitoring of AI voice sales and customer engagement metrics</p>
             </div>
           </div>
 
@@ -341,7 +332,7 @@ export const AdminDashboard: React.FC = () => {
                   </span>
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
-                  Configure central human agent phone line for automated Twilio/ElevenLabs call escalations.
+                  Configure central human agent phone line for automated Telecom/AI call escalations.
                 </p>
               </div>
             </div>
@@ -508,7 +499,7 @@ export const AdminDashboard: React.FC = () => {
             </div>
             <div>
               <h3 className="font-black text-slate-900 text-base">AI Calling & Integration Setup</h3>
-              <p className="text-xs text-slate-500">Configure Twilio & ElevenLabs server-side secrets and execute verified test calls.</p>
+              <p className="text-xs text-slate-500">Configure Telecom & Voice AI server-side secrets and execute verified test calls.</p>
             </div>
           </div>
           <button
@@ -686,7 +677,7 @@ export const AdminDashboard: React.FC = () => {
                     <p className="text-xs text-slate-400">Caller: {selectedCall.from} • Target: {selectedCall.to}</p>
                   </div>
                   <span className="text-xs font-mono text-indigo-300 bg-indigo-500/20 px-2.5 py-1 rounded-lg border border-indigo-500/30">
-                    Twilio + Gemini
+                    AI Voice Engine
                   </span>
                 </div>
 

@@ -5,7 +5,6 @@ import { api } from '../services/api.ts';
 import { isProductExpress30MinEligible, getProductDeliveryInfo } from '../utils/delivery.ts';
 import {
   ArrowLeft,
-  Sparkles,
   ShoppingBag,
   Zap,
   ShieldCheck,
@@ -33,7 +32,7 @@ interface ProductDetailViewProps {
 }
 
 export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId, onBack }) => {
-  const { user, addToCart, startCallingBot, openEnquiryModal, showToast, setActiveTab } = useApp();
+  const { user, addToCart, openEnquiryModal, showToast, setActiveTab } = useApp();
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -558,7 +557,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
               </button>
             </div>
 
-      {/* Customer Enquiry & Voice Actions */}
+      {/* Customer Enquiry Action */}
       <div className="flex flex-col sm:flex-row gap-3">
         <button
           onClick={() => openEnquiryModal(product.id)}
@@ -566,14 +565,6 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({ productId,
         >
           <MessageSquare className="w-4 h-4 text-indigo-600" />
           <span>Ask Seller a Question</span>
-        </button>
-        
-        <button
-          onClick={() => startCallingBot(product)}
-          className="flex-1 py-3 px-4 bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-500 hover:to-violet-50 text-white border border-indigo-400/30 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-indigo-500/20 cursor-pointer animate-in fade-in"
-        >
-          <Sparkles className="w-4 h-4 text-indigo-200" />
-          <span>Talk to AI Assistant</span>
         </button>
       </div>
     </div>

@@ -21,7 +21,6 @@ import { vobizService } from './server/vobizService.ts';
 import { amazonPaapiService } from './server/amazonPaapi.ts';
 import { getCourierTrackingDetails } from './server/courier.ts';
 import { smsService } from './server/sms.ts';
-import { voiceTools } from './server/voiceTools.ts';
 import http from 'http';
 import { generateAndSendOtp, verifyOtpCode, getSessionStatus, isSessionAuthenticated } from './server/otp.ts';
 import { setupTwilioMediaStreamServer } from './server/twilioMediaStream.ts';
@@ -687,6 +686,7 @@ app.post('/api/leads', (req, res) => {
 
   // Save lead securely to database
   // CRITICAL REQUIREMENT: Never automatically trigger a phone call, SMS, or email when lead is submitted!
+  const authUser = getAuthUser(req);
   const newLead = db.createLead({
     name: name.trim(),
     mobile: cleanMobile,
@@ -695,6 +695,7 @@ app.post('/api/leads', (req, res) => {
     productId: matchedProduct?.id || productId,
     productName: matchedProduct?.name,
     sellerId: matchedProduct?.sellerId || sellerId || 'usr-seller-1',
+    customerId: authUser?.id,
     notes: notes ? notes.trim() : undefined,
     hasConsent: true,
     consentTimestamp: consentTimestamp || new Date().toISOString(),
@@ -708,11 +709,19 @@ app.post('/api/leads', (req, res) => {
   });
 });
 
-// View Leads (Restricted to Authorized Sellers & Platform Admins)
+// View Leads (Sellers/Admins see merchant leads; Customers see their own submitted leads)
 app.get('/api/leads', (req, res) => {
   const user = getAuthUser(req);
-  if (!user || (user.role !== 'seller' && user.role !== 'admin')) {
-    return res.status(403).json({ error: 'Unauthorized: Only authorized sellers and administrators can view leads.' });
+  if (!user) {
+    return res.status(403).json({ error: 'Unauthorized: Sign in to view submitted leads.' });
+  }
+
+  if (user.role === 'customer') {
+    return res.json(db.getLeads(undefined, user));
+  }
+
+  if (user.role !== 'seller' && user.role !== 'admin') {
+    return res.status(403).json({ error: 'Unauthorized: Only authorized users can view leads.' });
   }
 
   const sellerId = user.role === 'admin' ? undefined : user.id;
@@ -734,15 +743,15 @@ app.post('/api/leads/:id/trigger-call', (req, res) => {
   }
 
   // Update lead call status
-  lead.callStatus = 'CALLING';
-  lead.updatedAt = new Date().toISOString();
+  db.updateLead(id, { callStatus: 'CALLING' });
 
   // Async simulated call completion
   setTimeout(() => {
-    lead.callStatus = 'COMPLETED';
-    lead.status = 'CONTACTED';
-    lead.callSummary = `Outbound AI call completed to ${lead.name} (${lead.mobile}). Addressed interest regarding "${lead.productInterest}". Verified merchant catalogue specifications and availability. Customer contact qualified.`;
-    lead.updatedAt = new Date().toISOString();
+    db.updateLead(id, {
+      callStatus: 'COMPLETED',
+      status: 'CONTACTED',
+      callSummary: `Outbound AI call completed to ${lead.name} (${lead.mobile}). Addressed interest regarding "${lead.productInterest}". Verified merchant catalogue specifications and availability. Customer contact qualified.`,
+    });
   }, 1500);
 
   return res.json({
@@ -760,30 +769,31 @@ app.post('/api/enquiries/:id/trigger-call', (req, res) => {
     return res.status(404).json({ error: 'Enquiry not found' });
   }
 
-  enquiry.callStatus = 'CALLING';
-  enquiry.updatedAt = new Date().toISOString();
+  db.createOrUpdateEnquiry({ ...enquiry, callStatus: 'CALLING' });
 
   setTimeout(() => {
     const product = db.getProductById(enquiry.productId);
-    enquiry.callStatus = 'COMPLETED';
-    enquiry.callSummary = `Outbound AI call completed to ${enquiry.customerName} (${enquiry.customerPhone || '+91 98450 12345'}). Addressed enquiry regarding "${enquiry.question || enquiry.lastMessageSnippet}". Verified product stock and delivery timelines using store catalogue & RAG docs.`;
-    enquiry.interestLevel = enquiry.interestLevel || 'HIGH';
-    enquiry.customerQuestions = [enquiry.question || enquiry.lastMessageSnippet, 'Is stock available for instant Bangalore delivery?'];
-    enquiry.customerObjections = enquiry.customerObjections || ['Checked competitor pricing & verified 7-day return policy'];
-    enquiry.followupRequired = 'Follow up with Razorpay checkout link via SMS/WhatsApp.';
-    enquiry.calledAt = new Date().toISOString();
-    enquiry.callDuration = 78;
-    enquiry.callSid = `CA-OUTBOUND-${Date.now().toString(36).toUpperCase()}`;
-    enquiry.googleSheetsSynced = true;
-    enquiry.googleSheetsRowUrl = 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0';
-    enquiry.transcript = [
-      { speaker: 'AI Agent (ElevenLabs)', text: `Hello ${enquiry.customerName}! Calling from ${product?.sellerName || 'TrendVibe Store'} regarding your enquiry about ${enquiry.productName}.`, timestamp: '00:02' },
-      { speaker: 'Customer', text: enquiry.question || 'Is this genuine and when will it deliver?', timestamp: '00:08' },
-      { speaker: 'AI Agent (Gemini RAG)', text: `Yes, ${enquiry.productName} is 100% verified original with 1-year manufacturer warranty. We can deliver in 30 minutes in Bangalore!`, timestamp: '00:15' },
-      { speaker: 'Customer', text: 'Great! Please text me the order payment link.', timestamp: '00:25' },
-      { speaker: 'AI Agent (ElevenLabs)', text: 'Sending you the link via SMS now. Thank you for choosing TrendVibe Store!', timestamp: '00:32' },
-    ];
-    enquiry.updatedAt = new Date().toISOString();
+    db.createOrUpdateEnquiry({
+      ...enquiry,
+      callStatus: 'COMPLETED',
+      callSummary: `Outbound AI call completed to ${enquiry.customerName} (${enquiry.customerPhone || '+91 98450 12345'}). Addressed enquiry regarding "${enquiry.question || enquiry.lastMessageSnippet}". Verified product stock and delivery timelines using store catalogue & RAG docs.`,
+      interestLevel: enquiry.interestLevel || 'HIGH',
+      customerQuestions: [enquiry.question || enquiry.lastMessageSnippet, 'Is stock available for instant Bangalore delivery?'],
+      customerObjections: enquiry.customerObjections || ['Checked competitor pricing & verified 7-day return policy'],
+      followupRequired: 'Follow up with Razorpay checkout link via SMS/WhatsApp.',
+      calledAt: new Date().toISOString(),
+      callDuration: 78,
+      callSid: `CA-OUTBOUND-${Date.now().toString(36).toUpperCase()}`,
+      googleSheetsSynced: true,
+      googleSheetsRowUrl: 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0',
+      transcript: [
+        { speaker: 'AI Assistant', text: `Hello ${enquiry.customerName}! Calling from ${product?.sellerName || 'TrendVibe Store'} regarding your enquiry about ${enquiry.productName}.`, timestamp: '00:02' },
+        { speaker: 'Customer', text: enquiry.question || 'Is this genuine and when will it deliver?', timestamp: '00:08' },
+        { speaker: 'AI Assistant', text: `Yes, ${enquiry.productName} is 100% verified original with 1-year manufacturer warranty. We can deliver in 30 minutes in Bangalore!`, timestamp: '00:15' },
+        { speaker: 'Customer', text: 'Great! Please text me the order payment link.', timestamp: '00:25' },
+        { speaker: 'AI Assistant', text: 'Sending you the link via SMS now. Thank you for choosing TrendVibe Store!', timestamp: '00:32' },
+      ],
+    });
   }, 1200);
 
   res.json({ success: true, message: 'AI Outbound phone call triggered to customer', enquiry });
@@ -918,22 +928,27 @@ app.post('/api/enquiries/:id/transfer-human', (req, res) => {
     return res.status(404).json({ error: 'Enquiry not found' });
   }
 
-  enquiry.humanTransferRequested = true;
-  enquiry.transferReason = reason || 'Customer requested live human seller assistant during AI phone call.';
-  enquiry.callSummary = `[HUMAN ESCALATED] AI Agent handed off call to live seller agent. Reason: ${enquiry.transferReason}`;
-  enquiry.updatedAt = new Date().toISOString();
-
-  if (!enquiry.transcript) enquiry.transcript = [];
-  enquiry.transcript.push({
-    speaker: 'AI Agent (System)',
-    text: `Transferring call to live seller representative. Reason: ${enquiry.transferReason}`,
-    timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+  const transferReason = reason || 'Customer requested live human seller assistant during AI phone call.';
+  const updatedTranscript = [
+    ...(enquiry.transcript || []),
+    {
+      speaker: 'AI Agent (System)',
+      text: `Transferring call to live seller representative. Reason: ${transferReason}`,
+      timestamp: new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }),
+    },
+  ];
+  const updatedEnquiry = db.createOrUpdateEnquiry({
+    ...enquiry,
+    humanTransferRequested: true,
+    transferReason,
+    callSummary: `[HUMAN ESCALATED] AI Agent handed off call to live seller agent. Reason: ${transferReason}`,
+    transcript: updatedTranscript,
   });
 
   res.json({
     success: true,
     message: 'Call transferred to live seller agent queue.',
-    enquiry,
+    enquiry: updatedEnquiry,
   });
 });
 
@@ -944,8 +959,11 @@ app.post('/api/integrations/google-sheets/sync', (req, res) => {
   const target = enquiryId ? enquiries.filter((e) => e.id === enquiryId) : enquiries;
 
   target.forEach((e) => {
-    e.googleSheetsSynced = true;
-    e.googleSheetsRowUrl = 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0';
+    db.createOrUpdateEnquiry({
+      ...e,
+      googleSheetsSynced: true,
+      googleSheetsRowUrl: 'https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0',
+    });
   });
 
   res.json({
@@ -1993,158 +2011,6 @@ app.post('/api/sms/send-tracking-link', async (req, res) => {
   const recipient = phone || order.shippingAddress.phone || order.customerPhone || '+91 98450 12345';
   const result = await smsService.sendTrackingLinkSms(recipient, order.orderNumber, trackingDetails.trackingUrl, trackingDetails.estimatedDeliveryDate);
   res.json(result);
-});
-
-// ==========================================
-// ELEVENLABS VOICE AGENT & BACKEND API ROUTES
-// ==========================================
-
-// Config status for the frontend
-app.get('/api/voice-assistant/config', (_req, res) => {
-  res.json({
-    provider: 'elevenlabs',
-    agentId: process.env.ELEVENLABS_AGENT_ID || 'agent_9401m63qfb47fe3atajs7ccv9xsb',
-    isConfigured: Boolean(process.env.ELEVENLABS_API_KEY),
-  });
-});
-
-// Get signed URL for ElevenLabs conversation if needed (placeholder for future use)
-app.get('/api/elevenlabs/signed-url', async (_req, res) => {
-  try {
-    const agentId = process.env.ELEVENLABS_AGENT_ID || 'agent_9401m63qfb47fe3atajs7ccv9xsb';
-    const apiKey = process.env.ELEVENLABS_API_KEY;
-
-    if (!apiKey) {
-      return res.status(400).json({ error: 'ELEVENLABS_API_KEY not configured' });
-    }
-
-    const response = await fetch(`https://api.elevenlabs.io/v1/convai/conversation/get_signed_url?agent_id=${agentId}`, {
-      method: 'GET',
-      headers: {
-        'xi-api-key': apiKey,
-      },
-    });
-
-    if (!response.ok) {
-      throw new Error('Failed to get signed URL from ElevenLabs');
-    }
-
-    const data = await response.json();
-    res.json(data);
-  } catch (err: any) {
-    res.status(500).json({ error: err.message });
-  }
-});
-
-
-// Tool: Search products in live catalog
-app.post('/api/voice-assistant/tools/search-products', (req, res) => {
-  try {
-    const result = voiceTools.searchProducts(req.body);
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Tool: Get product pricing, MRP, stock & specs
-app.post('/api/voice-assistant/tools/get-product-details', (req, res) => {
-  try {
-    const result = voiceTools.getProductDetails(req.body);
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Tool: Get delivery timelines & express eligibility
-app.post('/api/voice-assistant/tools/get-delivery-info', (req, res) => {
-  try {
-    const result = voiceTools.getDeliveryInfo(req.body);
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Tool: Get category return policy
-app.post('/api/voice-assistant/tools/get-return-policy', (req, res) => {
-  try {
-    const result = voiceTools.getReturnPolicy(req.body);
-    res.json(result);
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// ElevenLabs Knowledge Context Endpoint for AI Agent prompt synchronization
-app.get('/api/voice-assistant/knowledge-context', async (_req, res) => {
-  try {
-    // Reusing the same structure but generic naming
-    const products = db.getProducts({ status: 'published' });
-    const categories = Array.from(new Set(products.map((p) => p.category)));
-
-    const productLines = products.map((p, index) => {
-      const inStock = (p.stock?.available ?? 0) > 0;
-      const stockText = inStock ? `In Stock (${p.stock.available} units available)` : 'Out of Stock';
-      const specs = Object.entries(p.specifications || {})
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ');
-
-      return `${index + 1}. [${p.category.toUpperCase()}] ${p.name}: ₹${p.price}. ${stockText}. Specs: ${specs}.`;
-    });
-
-    res.json({
-      success: true,
-      context: `TrendVibe Inventory:\n${productLines.join('\n')}`,
-    });
-  } catch (err: any) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-});
-
-// Save completed voice session outcome & update lead/enquiry
-app.post('/api/voice-assistant/session/complete', (req, res) => {
-  try {
-    const { leadId, enquiryId, summary, durationSeconds } = req.body;
-
-    let updatedLead = false;
-    let updatedEnquiry = false;
-
-    if (leadId) {
-      const existingLead = db.getLeadById(leadId);
-      if (existingLead) {
-        const sessionNote = `\n[AI Voice Assistant Session - ${new Date().toLocaleTimeString()}]: ${summary || 'Voice conversation concluded.'}`;
-        db.updateLead(leadId, {
-          notes: (existingLead.notes || '') + sessionNote,
-        });
-        updatedLead = true;
-      }
-    }
-
-    if (enquiryId) {
-      const existingEnquiries = db.getEnquiries();
-      const existing = existingEnquiries.find((e) => e.id === enquiryId);
-      if (existing) {
-        db.createOrUpdateEnquiry({
-          ...existing,
-          id: existing.id,
-          question: `${existing.question}\n[AI Voice Assistant Notes]: ${summary || 'Voice conversation concluded.'}`,
-        });
-        updatedEnquiry = true;
-      }
-    }
-
-    res.json({
-      success: true,
-      updatedLead,
-      updatedEnquiry,
-      durationSeconds: Number(durationSeconds) || 0,
-    });
-  } catch (err: any) {
-    console.error('Session complete error:', err);
-    res.status(500).json({ error: err.message });
-  }
 });
 
 // ==========================================

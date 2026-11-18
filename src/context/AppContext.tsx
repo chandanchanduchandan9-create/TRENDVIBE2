@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { User, Product, CategoryInfo, OrderItem } from '../types/index.ts';
 import { api, setStoredToken, getStoredToken } from '../services/api.ts';
 import { isProductExpress30MinEligible } from '../utils/delivery.ts';
@@ -40,7 +40,7 @@ interface AppContextType {
     hasExpressEligibleItems: boolean;
   };
 
-  activeTab: 'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition' | 'seller-store';
+  activeTab: 'storefront' | 'product-detail' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition' | 'seller-store';
   setActiveTab: (tab: any) => void;
   selectedProductId: string | null;
   openProduct: (id: string) => void;
@@ -49,11 +49,6 @@ interface AppContextType {
   selectedEnquiryProductId: string | null;
   openEnquiryModal: (productId: string) => void;
   closeEnquiryModal: () => void;
-
-  isCallingOpen: boolean;
-  activeCallingProduct: Product | null;
-  startCallingBot: (product?: Product) => void;
-  endCallingBot: () => void;
 
   toasts: ToastInfo[];
   showToast: (text: string, type?: 'success' | 'error' | 'info') => void;
@@ -78,24 +73,6 @@ interface AppContextType {
   }) => Promise<void>;
   logout: () => void;
   calibrateUserVoiceProfile: () => Promise<void>;
-
-  // Calling Gateway for contacting customers
-  isCallingGatewayOpen: boolean;
-  callingGatewayInitialData: {
-    customerPhone?: string;
-    customerName?: string;
-    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
-    orderId?: string;
-    productId?: string;
-  } | null;
-  openCallingGateway: (initialData?: {
-    customerPhone?: string;
-    customerName?: string;
-    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
-    orderId?: string;
-    productId?: string;
-  }) => void;
-  closeCallingGateway: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -115,7 +92,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
 
-  const [activeTab, setActiveTab] = useState<'storefront' | 'product-detail' | 'ai-shopping' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition' | 'seller-store'>(() => {
+  const [activeTab, setActiveTab] = useState<'storefront' | 'product-detail' | 'cart' | 'customer-orders' | 'seller-dashboard' | 'admin-dashboard' | 'lead-acquisition' | 'seller-store'>(() => {
     try {
       const params = new URLSearchParams(window.location.search);
       const viewParam = params.get('view');
@@ -123,7 +100,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (isLeadParam) {
         return 'lead-acquisition';
       }
-      if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition', 'seller-store'].includes(viewParam)) {
+      if (viewParam && ['storefront', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition', 'seller-store'].includes(viewParam)) {
         return viewParam as any;
       }
       if (params.get('product') || params.get('productId')) {
@@ -145,9 +122,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     }
   });
   const [selectedEnquiryProductId, setSelectedEnquiryProductId] = useState<string | null>(null);
-
-  const [isCallingOpen, setIsCallingOpen] = useState(false);
-  const [activeCallingProduct, setActiveCallingProduct] = useState<Product | null>(null);
 
   const [toasts, setToasts] = useState<ToastInfo[]>([]);
 
@@ -178,13 +152,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     if (enquireParam) {
       setSelectedEnquiryProductId(enquireParam);
     }
-    if (viewParam && ['storefront', 'ai-shopping', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition', 'seller-store'].includes(viewParam)) {
+    if (viewParam && ['storefront', 'cart', 'customer-orders', 'seller-dashboard', 'admin-dashboard', 'lead-acquisition', 'seller-store'].includes(viewParam)) {
       setActiveTab(viewParam as any);
     }
   }, []);
 
   // Sync browser URL without full reload
-  const updateUrlParam = (key: string, value: string | null) => {
+  const updateUrlParam = useCallback((key: string, value: string | null) => {
     const url = new URL(window.location.href);
     if (value) {
       url.searchParams.set(key, value);
@@ -192,15 +166,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       url.searchParams.delete(key);
     }
     window.history.replaceState({}, '', url.toString());
-  };
+  }, []);
 
-  const showToast = (text: string, type: 'success' | 'error' | 'info' = 'info') => {
+  const showToast = useCallback((text: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = `${Date.now()}-${Math.random()}`;
     setToasts((prev) => [...prev, { id, text, type }]);
     setTimeout(() => {
       setToasts((prev) => prev.filter((t) => t.id !== id));
     }, 4000);
-  };
+  }, []);
 
   // Load initial session and switchable users
   useEffect(() => {
@@ -221,28 +195,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     init();
   }, []);
 
-  const refreshCategories = async () => {
+  const refreshCategories = useCallback(async () => {
     try {
       const cats = await api.getCategories();
       setCategories(cats);
     } catch (e) {
       console.error(e);
     }
-  };
+  }, []);
 
   const [isLoginModalOpen, setIsLoginModalOpen] = useState(false);
   const [loginModalDefaultRole, setLoginModalDefaultRole] = useState<'customer' | 'seller' | 'admin'>('customer');
 
-  const openLoginModal = (role?: 'customer' | 'seller' | 'admin') => {
+  const openLoginModal = useCallback((role?: 'customer' | 'seller' | 'admin') => {
     if (role) setLoginModalDefaultRole(role);
     setIsLoginModalOpen(true);
-  };
+  }, []);
 
-  const closeLoginModal = () => {
+  const closeLoginModal = useCallback(() => {
     setIsLoginModalOpen(false);
-  };
+  }, []);
 
-  const handleLogin = async (credentials: { email?: string; phone?: string; password: string; role?: string }) => {
+  const handleLogin = useCallback(async (credentials: { email?: string; phone?: string; password: string; role?: string }) => {
     try {
       const res = await api.login(credentials);
       if (res?.user && res?.token) {
@@ -264,9 +238,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast(err.message || 'Login failed', 'error');
       throw err;
     }
-  };
+  }, [showToast]);
 
-  const handleRegister = async (data: {
+  const handleRegister = useCallback(async (data: {
     name: string;
     email: string;
     phone: string;
@@ -299,17 +273,17 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       showToast(err.message || 'Registration failed', 'error');
       throw err;
     }
-  };
+  }, [showToast]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     setStoredToken('');
     // Revert to null or guest
     setUser(null);
     showToast('Signed out successfully.', 'info');
     setActiveTab('storefront');
-  };
+  }, [showToast]);
 
-  const calibrateUserVoiceProfile = async () => {
+  const calibrateUserVoiceProfile = useCallback(async () => {
     try {
       const res = await api.calibrateVoiceProfile();
       if (res.user) {
@@ -319,10 +293,13 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } catch (err: any) {
       showToast(`Voice calibration notice: ${err.message}`, 'info');
     }
-  };
+  }, [showToast]);
 
-  const switchPersona = async (userId: string) => {
-    const target = availableUsers.find((u) => u.id === userId);
+  const availableUsersRef = useRef<User[]>(availableUsers);
+  availableUsersRef.current = availableUsers;
+
+  const switchPersona = useCallback(async (userId: string) => {
+    const target = availableUsersRef.current.find((u) => u.id === userId);
     if (target) {
       setStoredToken(target.id);
       setUser(target);
@@ -336,9 +313,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         setActiveTab('storefront');
       }
     }
-  };
+  }, [showToast]);
 
-  const addToCart = (product: Product, quantity = 1, variantId?: string) => {
+  const addToCart = useCallback((product: Product, quantity = 1, variantId?: string) => {
     // Check available stock
     const available = product.stock.available;
     if (available <= 0) {
@@ -357,7 +334,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           return prev;
         }
         const updated = [...prev];
-        updated[existingIdx].quantity = newQty;
+        updated[existingIdx] = { ...updated[existingIdx], quantity: newQty };
         showToast(`Updated "${product.name}" quantity to ${newQty}`, 'success');
         return updated;
       } else {
@@ -365,14 +342,14 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return [...prev, { product, quantity, variantId }];
       }
     });
-  };
+  }, [showToast]);
 
-  const removeFromCart = (productId: string, variantId?: string) => {
+  const removeFromCart = useCallback((productId: string, variantId?: string) => {
     setCart((prev) => prev.filter((it) => !(it.product.id === productId && it.variantId === variantId)));
     showToast('Item removed from cart', 'info');
-  };
+  }, [showToast]);
 
-  const updateCartQuantity = (productId: string, quantity: number, variantId?: string) => {
+  const updateCartQuantity = useCallback((productId: string, quantity: number, variantId?: string) => {
     if (quantity <= 0) {
       removeFromCart(productId, variantId);
       return;
@@ -389,9 +366,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
         return it;
       })
     );
-  };
+  }, [removeFromCart, showToast]);
 
-  const clearCart = () => setCart([]);
+  const clearCart = useCallback(() => setCart([]), []);
 
   const cartCount = cart.reduce((sum, it) => sum + it.quantity, 0);
 
@@ -415,123 +392,116 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     };
   }, [cart]);
 
-  const openProduct = (id: string) => {
+  const openProduct = useCallback((id: string) => {
     setSelectedProductId(id);
     setActiveTab('product-detail');
     updateUrlParam('product', id);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [updateUrlParam]);
 
-  const openSellerStore = (sellerId: string) => {
+  const openSellerStore = useCallback((sellerId: string) => {
     setSelectedSellerId(sellerId);
     setActiveTab('seller-store');
     updateUrlParam('seller', sellerId);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  };
+  }, [updateUrlParam]);
 
-  const openEnquiryModal = (productId: string) => {
+  const openEnquiryModal = useCallback((productId: string) => {
     setSelectedEnquiryProductId(productId);
     updateUrlParam('enquire', productId);
-  };
+  }, [updateUrlParam]);
 
-  const closeEnquiryModal = () => {
+  const closeEnquiryModal = useCallback(() => {
     setSelectedEnquiryProductId(null);
     updateUrlParam('enquire', null);
-  };
+  }, [updateUrlParam]);
 
-  const startCallingBot = (product?: Product) => {
-    setActiveCallingProduct(product || null);
-    setIsCallingOpen(true);
-  };
-
-  const endCallingBot = () => {
-    setIsCallingOpen(false);
-  };
-
-  const [isCallingGatewayOpen, setIsCallingGatewayOpen] = useState(false);
-  const [callingGatewayInitialData, setCallingGatewayInitialData] = useState<{
-    customerPhone?: string;
-    customerName?: string;
-    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
-    orderId?: string;
-    productId?: string;
-  } | null>(null);
-
-  const openCallingGateway = (initialData?: {
-    customerPhone?: string;
-    customerName?: string;
-    callReason?: 'order_confirmation' | 'delivery_tracking' | 'product_enquiry' | 'payment_verification' | 'custom_support';
-    orderId?: string;
-    productId?: string;
-  }) => {
-    setCallingGatewayInitialData(initialData || null);
-    setIsCallingGatewayOpen(true);
-  };
-
-  const closeCallingGateway = () => {
-    setIsCallingGatewayOpen(false);
-    setCallingGatewayInitialData(null);
-  };
-
-  const checkExpressServiceability = (pincode: string) => {
+  const checkExpressServiceability = useCallback((pincode: string) => {
     const cleanPin = pincode.trim();
     return EXPRESS_PINCODES.includes(cleanPin);
-  };
+  }, []);
+
+  const setActiveTabAndSync = useCallback((tab: any) => {
+    setActiveTab(tab);
+    if (tab !== 'product-detail') {
+      updateUrlParam('product', null);
+    }
+    updateUrlParam('view', tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [updateUrlParam]);
+
+  const contextValue = useMemo<AppContextType>(() => ({
+    user,
+    setUser,
+    switchPersona,
+    availableUsers,
+    categories,
+    refreshCategories,
+    cart,
+    addToCart,
+    removeFromCart,
+    updateCartQuantity,
+    clearCart,
+    cartCount,
+    cartTotals,
+    activeTab,
+    setActiveTab: setActiveTabAndSync,
+    selectedProductId,
+    openProduct,
+    selectedSellerId,
+    openSellerStore,
+    selectedEnquiryProductId,
+    openEnquiryModal,
+    closeEnquiryModal,
+    toasts,
+    showToast,
+    expressPincodes: EXPRESS_PINCODES,
+    checkExpressServiceability,
+    isLoginModalOpen,
+    loginModalDefaultRole,
+    openLoginModal,
+    closeLoginModal,
+    handleLogin,
+    handleRegister,
+    logout,
+    calibrateUserVoiceProfile,
+  }), [
+    user,
+    switchPersona,
+    availableUsers,
+    categories,
+    refreshCategories,
+    cart,
+    addToCart,
+    removeFromCart,
+    updateCartQuantity,
+    clearCart,
+    cartCount,
+    cartTotals,
+    activeTab,
+    setActiveTabAndSync,
+    selectedProductId,
+    openProduct,
+    selectedSellerId,
+    openSellerStore,
+    selectedEnquiryProductId,
+    openEnquiryModal,
+    closeEnquiryModal,
+    toasts,
+    showToast,
+    checkExpressServiceability,
+    isLoginModalOpen,
+    loginModalDefaultRole,
+    openLoginModal,
+    closeLoginModal,
+    handleLogin,
+    handleRegister,
+    logout,
+    calibrateUserVoiceProfile,
+  ]);
 
   return (
-    <AppContext.Provider
-      value={{
-        user,
-        setUser,
-        switchPersona,
-        availableUsers,
-        categories,
-        refreshCategories,
-        cart,
-        addToCart,
-        removeFromCart,
-        updateCartQuantity,
-        clearCart,
-        cartCount,
-        cartTotals,
-        activeTab,
-        setActiveTab: (tab) => {
-          setActiveTab(tab);
-          if (tab !== 'product-detail') {
-            updateUrlParam('product', null);
-          }
-          updateUrlParam('view', tab);
-          window.scrollTo({ top: 0, behavior: 'smooth' });
-        },
-        selectedProductId,
-        openProduct,
-        selectedSellerId,
-        openSellerStore,
-        selectedEnquiryProductId,
-        openEnquiryModal,
-        closeEnquiryModal,
-        isCallingOpen,
-        activeCallingProduct,
-        startCallingBot,
-        endCallingBot,
-        toasts,
-        showToast,
-        expressPincodes: EXPRESS_PINCODES,
-        checkExpressServiceability,
-        isLoginModalOpen,
-        loginModalDefaultRole,
-        openLoginModal,
-        closeLoginModal,
-        handleLogin,
-        handleRegister,
-        logout,
-        calibrateUserVoiceProfile,
-        isCallingGatewayOpen,
-        callingGatewayInitialData,
-        openCallingGateway,
-        closeCallingGateway,
-      }}
-    >
+    <AppContext.Provider value={contextValue}>
       {children}
     </AppContext.Provider>
   );

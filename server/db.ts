@@ -1161,8 +1161,20 @@ class StoreDatabase {
   public getEnquiries(user?: User): ProductEnquiry[] {
     if (!user) return this.data.enquiries;
     if (user.role === 'admin') return this.data.enquiries;
-    if (user.role === 'seller') return this.data.enquiries.filter((e) => e.sellerId === user.id);
-    return this.data.enquiries.filter((e) => e.customerId === user.id);
+    if (user.role === 'seller') {
+      const activeSellerIds = new Set(
+        this.data.users.filter((u) => u.role === 'seller' || u.role === 'admin').map((u) => u.id)
+      );
+      return this.data.enquiries.filter(
+        (e) => !e.sellerId || e.sellerId === user.id || !activeSellerIds.has(e.sellerId)
+      );
+    }
+    const emailLower = user.email?.toLowerCase();
+    return this.data.enquiries.filter(
+      (e) =>
+        e.customerId === user.id ||
+        (emailLower && e.customerEmail?.toLowerCase() === emailLower)
+    );
   }
 
   public createOrUpdateEnquiry(enquiry: Omit<ProductEnquiry, 'id' | 'createdAt' | 'updatedAt'> & { id?: string }): ProductEnquiry {
@@ -1274,12 +1286,25 @@ class StoreDatabase {
     return newLead;
   }
 
-  public getLeads(sellerId?: string): CustomerLead[] {
+  public getLeads(sellerId?: string, customerUser?: User): CustomerLead[] {
     const allLeads = this.data.leads || [];
+    if (customerUser && customerUser.role === 'customer') {
+      const emailLower = customerUser.email?.toLowerCase();
+      return allLeads.filter(
+        (l) =>
+          l.customerId === customerUser.id ||
+          (emailLower && l.email?.toLowerCase() === emailLower)
+      );
+    }
     if (!sellerId || sellerId === 'admin' || sellerId === 'usr-admin-1') {
       return allLeads;
     }
-    return allLeads.filter((l) => !l.sellerId || l.sellerId === sellerId);
+    const activeSellerIds = new Set(
+      this.data.users.filter((u) => u.role === 'seller' || u.role === 'admin').map((u) => u.id)
+    );
+    return allLeads.filter(
+      (l) => !l.sellerId || l.sellerId === sellerId || !activeSellerIds.has(l.sellerId)
+    );
   }
 
   public getLeadById(id: string): CustomerLead | undefined {

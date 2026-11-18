@@ -370,6 +370,7 @@ export interface CustomerLead {
   productId?: string;
   productName?: string;
   sellerId?: string;
+  customerId?: string;
   notes?: string;
   hasConsent: boolean;
   consentTimestamp: string;
@@ -377,6 +378,11 @@ export interface CustomerLead {
   status: 'NEW' | 'CONTACTED' | 'QUALIFIED' | 'CONVERTED' | 'DISQUALIFIED';
   callStatus?: 'NOT_CALLED' | 'CALLING' | 'COMPLETED' | 'FAILED';
   callSummary?: string;
+  callDuration?: number;
+  callSid?: string;
+  interestLevel?: 'HIGH' | 'MEDIUM' | 'LOW' | 'UNSURE';
+  googleSheetsRowUrl?: string;
+  transcript?: { speaker: string; text: string; timestamp: string }[];
   createdAt: string;
   updatedAt: string;
 }

@@ -142,7 +142,7 @@ export const LoginGateView: React.FC = () => {
         </h1>
 
         <p className="text-slate-300 text-sm sm:text-base leading-relaxed">
-          Log in securely to explore 8 certified categories from healthcare & fresh food to flagship 5G smartphones and gaming laptops. Experience real-time Twilio + Gemini voice calls, instant OTP security verification, and 30-minute hyper-local express delivery.
+          Log in securely to explore 8 certified categories from healthcare & fresh food to flagship 5G smartphones and gaming laptops. Experience real-time AI-powered voice assistance, instant security verification, and 30-minute hyper-local express delivery.
         </p>
 
         <div className="grid grid-cols-2 gap-3 pt-2">
@@ -156,9 +156,9 @@ export const LoginGateView: React.FC = () => {
           <div className="bg-slate-900/80 border border-slate-800 p-3.5 rounded-2xl space-y-1">
             <div className="flex items-center gap-2 text-indigo-400 font-bold text-xs">
               <PhoneCall className="w-4 h-4 text-indigo-400" />
-              <span>Twilio + Gemini AI</span>
+              <span>Smart AI Voice</span>
             </div>
-            <p className="text-[11px] text-slate-400">Natural voice calls in English, Hindi & Kannada.</p>
+            <p className="text-[11px] text-slate-400">Natural conversations in English, Hindi & Kannada.</p>
           </div>
         </div>
 

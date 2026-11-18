@@ -5,7 +5,6 @@ import { Product, User } from '../types/index.ts';
 import { api } from '../services/api.ts';
 import { isProductExpress30MinEligible } from '../utils/delivery.ts';
 import {
-  Sparkles,
   Zap,
   Filter,
   ArrowUpDown,
@@ -152,14 +151,6 @@ export const SellerStorefrontView: React.FC<SellerStorefrontViewProps> = ({ sell
           <div className="bg-white/5 backdrop-blur-xl border border-white/10 rounded-3xl p-6 flex flex-col items-center justify-center space-y-2 min-w-[200px]">
             <div className="text-3xl font-black text-white">{products.length}</div>
             <div className="text-[10px] uppercase font-bold text-slate-400 tracking-tighter">Total Products</div>
-            <div className="pt-4 w-full">
-               <button 
-                onClick={() => setActiveTab('ai-shopping')}
-                className="w-full py-2 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl text-[10px] font-black uppercase tracking-widest transition-all shadow-lg shadow-indigo-900/40"
-               >
-                 Ask AI about this store
-               </button>
-            </div>
           </div>
         </div>
       </div>

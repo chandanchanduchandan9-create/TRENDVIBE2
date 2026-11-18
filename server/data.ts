@@ -211,6 +211,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Dolo-650-Full-Monograph.pdf',
+    pdfExtractedText: 'Dolo 650 Technical Data: Contains Paracetamol IP 650mg. Dosage for adults: 1 tablet every 4-6 hours. Max 4 tablets in 24 hours. Verified batch 2026. Certified for purity.',
     status: 'published',
     rating: 4.8,
     reviewCount: 420,
@@ -263,6 +265,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Calpol-500-Quality-Specs.pdf',
+    pdfExtractedText: 'Calpol 500 contains 500mg Paracetamol. Manufactured by GSK. Recommended for kids above 12 years and adults. Rapid relief within 15-20 minutes.',
     status: 'published',
     rating: 4.7,
     reviewCount: 310,
@@ -315,6 +319,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Electral-WHO-ORS-Standard.pdf',
+    pdfExtractedText: 'Electral WHO-ORS Powder: Dissolve 21.8g sachet in 1 litre water. Contains Sodium Chloride 2.6g, Potassium Chloride 1.5g, Sodium Citrate 2.9g, Dextrose 13.5g. WHO recommended osmolarity.',
     status: 'published',
     rating: 4.9,
     reviewCount: 540,
@@ -367,6 +373,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Moov-Cream-Ayurvedic-Specs.pdf',
+    pdfExtractedText: 'Moov Pain Relief Cream: 100% Ayurvedic. Contains Wintergreen oil, Mint extract, Turpentine oil, Eucalyptus oil. For backache, joint pain, inflammation.',
     status: 'published',
     rating: 4.6,
     reviewCount: 280,
@@ -418,6 +426,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Moov-Spray-Fast-Action.pdf',
+    pdfExtractedText: 'Moov Fast Acting Spray: Micro-droplet penetration. Ingredients: Nilgiri Tel, Tarpin Tel, Pudina Phool, Gandhapura Tel. Ideal for sports injuries.',
     status: 'published',
     rating: 4.7,
     reviewCount: 195,
@@ -469,6 +479,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'MenthoPlus-Balm-Technical.pdf',
+    pdfExtractedText: 'MenthoPlus Cooling Balm: Herbal actives for tension headaches and nasal congestion. Contains Menthol, Camphor, Eucalyptus oil, Clove oil.',
     status: 'published',
     rating: 4.5,
     reviewCount: 160,
@@ -524,6 +536,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 0,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Ragi-Idli-Nutritional-Lab.pdf',
+    pdfExtractedText: 'Ragi Idli Nutritional Lab Results: Calories 210, Protein 6.8g, Calcium 344mg, Iron 3.9mg per 4 pieces. Gluten-free environment. Fermented naturally.',
     status: 'published',
     rating: 4.9,
     reviewCount: 380,
@@ -575,6 +589,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 0,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Veg-Idli-Veggie-Content.pdf',
+    pdfExtractedText: 'Steamed Vegetable Idli: Contains 30% fresh vegetables by weight (Carrots, Peas, Corn). No added sugar. Low glycemic index breakfast option.',
     status: 'published',
     rating: 4.8,
     reviewCount: 290,
@@ -627,6 +643,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 0,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Protein-Ladoo-Energy-Specs.pdf',
+    pdfExtractedText: 'Protein Ladoo Lab Analysis: 7g plant protein per ball. Zero refined sugar. High in Omega-3 (from Flaxseeds). 100% Medjool dates for sweetness.',
     status: 'published',
     rating: 4.9,
     reviewCount: 410,
@@ -678,6 +696,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 0,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Oats-Pancake-Breakfast-Info.pdf',
+    pdfExtractedText: 'Oats Banana Pancake: 100% whole rolled oats. No maida (refined flour). Natural fiber 8g per stack. Served with 100% pure wildflower honey.',
     status: 'published',
     rating: 4.8,
     reviewCount: 220,
@@ -729,6 +749,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 0,
       serviceablePincodes: ['560001', '560038', '560103', '560068', '560034', '560008']
     },
+    pdfDocName: 'Peanut-Smoothie-Recovery-Guide.pdf',
+    pdfExtractedText: 'Peanut Banana Protein Smoothie: 18g Whey Isolate protein per jar. Low lactose. No added white sugar. Heart-healthy fats from roasted peanut butter.',
     status: 'published',
     rating: 4.9,
     reviewCount: 340,
@@ -790,6 +812,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'iPhone-16-Apple-Intelligence-Specs.pdf',
+    pdfExtractedText: 'iPhone 16 Data Sheet: A18 Bionic Chip. Camera Control button. 48MP Fusion Camera. Supports Apple Intelligence. Ceramic Shield front.',
     status: 'published',
     rating: 4.9,
     reviewCount: 520,
@@ -842,6 +866,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Samsung-S25-AI-Technical.pdf',
+    pdfExtractedText: 'Samsung Galaxy S25 Specs: Snapdragon 8 Elite. 50MP ProVisual AI camera. Titanium frame. Integrated Galaxy AI features like Circle to Search and Live Translate.',
     status: 'published',
     rating: 4.8,
     reviewCount: 390,
@@ -894,6 +920,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Pixel-9a-Tensor-G4-Lab.pdf',
+    pdfExtractedText: 'Google Pixel 9a Data: Tensor G4 AI chip. Night Sight photography. Titan M2 security. 7 years of Pixel Feature Drops and OS updates guaranteed.',
     status: 'published',
     rating: 4.7,
     reviewCount: 280,
@@ -945,6 +973,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'OnePlus-13-Glacier-Battery.pdf',
+    pdfExtractedText: 'OnePlus 13 Technical Sheet: 6000mAh Glacier silicon-carbon battery. 100W SUPERVOOC. Hasselblad Gen 5 color calibration. Snapdragon 8 Elite SoC.',
     status: 'published',
     rating: 4.8,
     reviewCount: 310,
@@ -1001,6 +1031,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'ASUS-TUF-F15-Military-Specs.pdf',
+    pdfExtractedText: 'ASUS TUF Gaming F15: MIL-STD-810H durability. Dual-fan cooling. 144Hz IPS panel. RAM expandable to 32GB.',
     status: 'published',
     rating: 4.7,
     reviewCount: 380,
@@ -1054,6 +1086,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Vivobook-15-Privacy-Design.pdf',
+    pdfExtractedText: 'ASUS Vivobook 15: Physical webcam privacy shield. 180° lay-flat hinge. Antimicrobial Guard Plus protection. Intel Core 12th Gen performance.',
     status: 'published',
     rating: 4.6,
     reviewCount: 245,
@@ -1106,6 +1140,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Dell-Inspiron-15-ComfortView.pdf',
+    pdfExtractedText: 'Dell Inspiron 15 3520: 120Hz smooth display. TUV Rheinland certified ComfortView software reduces blue light emissions. ExpressCharge 80% in 60 mins.',
     status: 'published',
     rating: 4.7,
     reviewCount: 310,
@@ -1158,6 +1194,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Lenovo-IdeaPad-3-Durability.pdf',
+    pdfExtractedText: 'Lenovo IdeaPad Slim 3: MIL-STD-810H military-grade durability. Rapid Charge Boost. Smart Power thermal management. Integrated physical camera shutter.',
     status: 'published',
     rating: 4.8,
     reviewCount: 290,
@@ -1212,6 +1250,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Minimalist-Niacinamide-Lab.pdf',
+    pdfExtractedText: 'Minimalist 10% Niacinamide: pH 5.5-6.5. 1% Zinc PCA. Fragrance-free. Clinically proven to reduce sebum by 30% in 4 weeks. Barrier-friendly formula.',
     status: 'published',
     rating: 4.8,
     reviewCount: 420,
@@ -1263,6 +1303,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Cetaphil-Cleanser-Dermatology.pdf',
+    pdfExtractedText: 'Cetaphil Gentle Skin Cleanser: Hypoallergenic. Soap-free. Contains Glycerin, Panthenol (Pro-Vitamin B5), Niacinamide (Vitamin B3). Defends against 5 signs of skin sensitivity.',
     status: 'published',
     rating: 4.9,
     reviewCount: 610,
@@ -1314,6 +1356,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Dot-Key-Sunscreen-Lab.pdf',
+    pdfExtractedText: 'Dot & Key Sunscreen: Broad spectrum SPF 50+ PA+++. Water-light formula. Cica and Hyaluronic acid enriched. Clinically tested for zero white cast on Indian skin tones.',
     status: 'published',
     rating: 4.7,
     reviewCount: 350,
@@ -1366,6 +1410,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Maybelline-Lipstick-Stay-Power.pdf',
+    pdfExtractedText: 'Maybelline SuperStay Matte Ink: Up to 16HR wear. Transfer-proof. Smudge-proof. Arrow applicator for precision. Contains elastic ink technology for comfortable matte finish.',
     status: 'published',
     rating: 4.6,
     reviewCount: 480,
@@ -1426,6 +1472,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 14,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Nike-Air-Max-Heritage-Design.pdf',
+    pdfExtractedText: 'Nike Air Max SC: Visible Air Max unit in heel. Phylon foam midsole for lightweight cushioning. Waffle rubber outsole. Mix of mesh, leather and textile.',
     status: 'published',
     rating: 4.8,
     reviewCount: 390,
@@ -1477,6 +1525,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 14,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Adidas-Ultraboost-Light-Lab.pdf',
+    pdfExtractedText: 'Adidas Ultraboost Light: 30% lighter Boost material. Linear Energy Push (LEP) system. Continental Better Rubber. Primeknit+ upper for targeted support.',
     status: 'published',
     rating: 4.9,
     reviewCount: 310,
@@ -1528,6 +1578,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 14,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Puma-Softride-Comfort-Specs.pdf',
+    pdfExtractedText: 'Puma Softride Pro: Extreme cushioning Softride foam. SoftFoam+ sockliner. Zoned rubber outsole for traction. Bootie construction for easy entry.',
     status: 'published',
     rating: 4.6,
     reviewCount: 220,
@@ -1579,6 +1631,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 14,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Woodland-Leather-Traction-Guide.pdf',
+    pdfExtractedText: 'Woodland Leather Loafers: Genuine oiled nubuck leather. Hand-stitched construction. Deep grooved TPR outsole. Highly durable for outdoor terrain.',
     status: 'published',
     rating: 4.7,
     reviewCount: 260,
@@ -1637,6 +1691,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 15,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Raymond-Cotton-Quality-Report.pdf',
+    pdfExtractedText: 'Raymond Formal Shirt: 100% Egyptian Giza Cotton. 2-ply yarn for durability. Liquid ammonia finish for easy iron. Tailored fit with reinforced stitching.',
     status: 'published',
     rating: 4.8,
     reviewCount: 310,
@@ -1692,6 +1748,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 15,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Levis-511-Stretch-Technical.pdf',
+    pdfExtractedText: 'Levis 511 Slim: Levi’s Flex technology for high stretch. 12oz midweight denim. Slim leg opening 14.5". Reinforced stress points with rivets.',
     status: 'published',
     rating: 4.7,
     reviewCount: 420,
@@ -1743,6 +1801,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 15,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'FabIndia-Handblock-Heritage.pdf',
+    pdfExtractedText: 'FabIndia Handblock Kurta: Authentic wooden block printing. Hand-dyed with AZO-free dyes. 100% natural Indian cotton. Pre-shrunk for consistent fit.',
     status: 'published',
     rating: 4.8,
     reviewCount: 230,
@@ -1794,6 +1854,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 15,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Zara-Bomber-Utility-Specs.pdf',
+    pdfExtractedText: 'Zara Bomber Jacket: Water-repellent technical fabric. Ribbed elastic cuffs and hem. Quilted lining for insulation. Utility sleeve pocket with zipper.',
     status: 'published',
     rating: 4.7,
     reviewCount: 180,
@@ -1848,6 +1910,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'boAt-Airdopes-ANC-Lab.pdf',
+    pdfExtractedText: 'boAt Airdopes 141 ANC: 32dB Hybrid ANC. 10mm titanium drivers. Beast Mode (50ms low latency). ENx technology for clear calls. IPX5 rated.',
     status: 'published',
     rating: 4.7,
     reviewCount: 780,
@@ -1899,6 +1963,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Milton-Thermosteel-Retention-Lab.pdf',
+    pdfExtractedText: 'Milton Thermosteel: 24-hour hot/cold retention. Copper-coated vacuum insulation. 304 Grade Stainless Steel. BPA-free leak-proof lid.',
     status: 'published',
     rating: 4.8,
     reviewCount: 460,
@@ -1950,6 +2016,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Portronics-GaN-65W-Safety.pdf',
+    pdfExtractedText: 'Portronics Adapto 65W: GaN III technology. Dual PD Type-C ports. Smart IC for device protection. 50% smaller than standard 65W chargers.',
     status: 'published',
     rating: 4.8,
     reviewCount: 330,
@@ -2001,6 +2069,8 @@ export const INITIAL_PRODUCTS: Product[] = [
       returnPolicyDays: 7,
       serviceablePincodes: ['*']
     },
+    pdfDocName: 'Solimo-Cushion-Ergo-Specs.pdf',
+    pdfExtractedText: 'Solimo Memory Foam Cushion: 100% pure memory foam. U-shaped ergonomic cut-out for tailbone relief. Breathable 3D mesh cover. Non-slip bottom.',
     status: 'published',
     rating: 4.7,
     reviewCount: 290,

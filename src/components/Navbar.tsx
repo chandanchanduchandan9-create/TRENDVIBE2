@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useApp } from '../context/AppContext.tsx';
 import {
   ShoppingBag,
-  Sparkles,
   User as UserIcon,
   Search,
   Store,
@@ -113,19 +112,6 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* Navigation Action Buttons */}
           <div className="flex items-center gap-2 sm:gap-3">
-            {/* Smart Search Button */}
-            <button
-              onClick={() => setActiveTab('ai-shopping')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                activeTab === 'ai-shopping'
-                  ? 'bg-indigo-600 text-white shadow-md shadow-indigo-600/20'
-                  : 'bg-indigo-50 text-indigo-700 hover:bg-indigo-100 border border-indigo-200/60'
-              }`}
-            >
-              <Sparkles className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Smart Search</span>
-            </button>
-
             {/* Lead Acquisition Form Button (Sellers/Admins Only) */}
             {(user?.role === 'seller' || user?.role === 'admin') && (
               <button

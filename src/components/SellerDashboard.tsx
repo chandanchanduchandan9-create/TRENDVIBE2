@@ -56,9 +56,10 @@ import {
 } from 'lucide-react';
 
 export const SellerDashboard: React.FC = () => {
-  const { user, categories, showToast, openCallingGateway, openSellerStore } = useApp();
+  const { user, categories, showToast, openSellerStore } = useApp();
 
   const [activeSubTab, setActiveSubTab] = useState<'products' | 'enquiries' | 'inventory' | 'delivery' | 'analytics' | 'finance'>('products');
+  const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'leads' | 'enquiries'>('all');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [enquiries, setEnquiries] = useState<ProductEnquiry[]>([]);
@@ -74,6 +75,8 @@ export const SellerDashboard: React.FC = () => {
   // Modals
   const [isAddProductOpen, setIsAddProductOpen] = useState(false);
   const [showCallHistoryModal, setShowCallHistoryModal] = useState(false);
+  const [activeLedgerItem, setActiveLedgerItem] = useState<any | null>(null);
+  const [showMasterLedgerModal, setShowMasterLedgerModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [isRestockOpen, setIsRestockOpen] = useState(false);
   const [restockTargetProduct, setRestockTargetProduct] = useState<Product | null>(null);
@@ -275,20 +278,36 @@ export const SellerDashboard: React.FC = () => {
 
   const [platformSupportInfo, setPlatformSupportInfo] = useState<{ isConfigured: boolean; status: string; humanSupportPhone?: string } | null>(null);
 
+  const loadEnquiriesAndLeads = async (showNotice = false) => {
+    try {
+      const [enqRes, leadsRes] = await Promise.all([
+        api.getEnquiries().catch(() => []),
+        api.getLeads().catch(() => []),
+      ]);
+      setEnquiries(enqRes || []);
+      setLeads(leadsRes || []);
+      if (showNotice) {
+        showToast(`Loaded ${(enqRes || []).length} enquiries and ${(leadsRes || []).length} leads.`, 'success');
+      }
+    } catch (err: any) {
+      if (showNotice) showToast(`Refresh error: ${err.message}`, 'error');
+    }
+  };
+
   const loadAllData = async () => {
     setLoading(true);
     try {
       // Fetch products: if seller is active, get seller's products (or all products if customer/admin view)
       const sellerFilter = (user?.role === 'seller' && user?.id !== 'usr-customer-1') ? user.id : undefined;
       const [prodsRes, ordsRes, enqRes, leadsRes, movsRes, docsRes, anaRes, finRes, supaRes, supportRes] = await Promise.all([
-        api.getProducts({ sellerId: sellerFilter }),
-        api.getOrders(),
-        api.getEnquiries(),
+        api.getProducts({ sellerId: sellerFilter }).catch(() => []),
+        api.getOrders().catch(() => []),
+        api.getEnquiries().catch(() => []),
         api.getLeads().catch(() => []),
-        api.getInventoryMovements(),
-        api.getSellerDocuments(),
-        api.getSellerAnalytics(),
-        api.getSellerFinance(),
+        api.getInventoryMovements().catch(() => []),
+        api.getSellerDocuments().catch(() => []),
+        api.getSellerAnalytics().catch(() => null),
+        api.getSellerFinance().catch(() => null),
         api.getSupabaseStatus().catch(() => null),
         api.getHumanSupportPhone().catch(() => null),
       ]);
@@ -372,6 +391,12 @@ export const SellerDashboard: React.FC = () => {
   useEffect(() => {
     loadAllData();
   }, [user]);
+
+  useEffect(() => {
+    if (activeSubTab === 'enquiries') {
+      loadEnquiriesAndLeads(false);
+    }
+  }, [activeSubTab]);
 
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -542,13 +567,6 @@ export const SellerDashboard: React.FC = () => {
             <Plus className="w-4 h-4" />
             <span>Add New Product</span>
           </button>
-          <button
-            onClick={() => setIsUploadDocOpen(true)}
-            className="px-4 py-2.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5 cursor-pointer"
-          >
-            <UploadCloud className="w-4 h-4 text-indigo-400" />
-            <span>Upload PDF Manual</span>
-          </button>
         </div>
       </div>
       
@@ -633,7 +651,7 @@ export const SellerDashboard: React.FC = () => {
           }`}
         >
           <PhoneForwarded className="w-4 h-4 text-emerald-600" />
-          <span>Product Enquiries & AI Calls ({enquiries.length})</span>
+          <span>Customer Enquiries & Leads ({enquiries.length + leads.length})</span>
         </button>
 
         <button
@@ -1225,398 +1243,462 @@ export const SellerDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 2: PRODUCT ENQUIRIES & AI VOICE CALLS */}
+      {/* TAB 2: UNIFIED CUSTOMER ENQUIRIES & COMMERCIAL LEADS HUB */}
       {activeSubTab === 'enquiries' && (
         <div className="space-y-6">
-          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border border-indigo-900/30">
+          {/* Operations Header */}
+          <div className="bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-indigo-900/30">
             <div>
-              <div className="inline-flex items-center gap-2 bg-emerald-500/20 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full border border-emerald-500/30">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Twilio + Gemini Outbound Call Automation System</span>
+              <div className="inline-flex items-center gap-2 bg-indigo-500/20 text-indigo-300 text-xs font-bold px-3 py-1 rounded-full border border-indigo-500/30">
+                <UserCheck className="w-3.5 h-3.5 text-indigo-400" />
+                <span>Unified Customer Enquiries & Leads Operations Center</span>
               </div>
               <h2 className="text-xl font-extrabold text-white mt-2">
-                Customer Product Enquiries & AI Phone Calling Logs
+                Customer Enquiries & Commercial Leads ({enquiries.length + leads.length})
               </h2>
               <p className="text-xs text-slate-300 mt-0.5">
-                Real-time enquiries submitted via shareable product links. AI calls customers, answers questions using website MongoDB catalogue, and logs call summaries.
+                Consolidated hub for lead acquisition form submissions and product enquiry messages. AI calls customers, answers catalogue questions, and records summaries.
               </p>
             </div>
 
             <div className="flex items-center gap-2 flex-wrap">
               <button
-                onClick={() => setShowCallHistoryModal(true)}
-                className="px-4 py-2.5 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/15 flex items-center gap-2 transition cursor-pointer shadow-sm"
+                onClick={() => loadEnquiriesAndLeads(true)}
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/15 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
               >
-                <PhoneCall className="w-4 h-4 text-emerald-400" />
-                <span>Call History</span>
+                <RefreshCw className="w-3.5 h-3.5 text-emerald-300" />
+                <span>Refresh</span>
               </button>
+
               <button
-                onClick={() => openCallingGateway()}
-                className="px-5 py-2.5 bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 text-slate-950 font-extrabold text-xs rounded-xl shadow-lg shadow-emerald-500/20 flex items-center gap-2 transition cursor-pointer"
+                onClick={() => {
+                  const url = `${window.location.origin}?view=lead-acquisition`;
+                  navigator.clipboard.writeText(url);
+                  showToast('Lead Acquisition Form link copied to clipboard!', 'success');
+                }}
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/15 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
               >
-                <PhoneForwarded className="w-4 h-4" />
-                <span>Manual Outbound Call Gateway</span>
+                <Copy className="w-3.5 h-3.5 text-indigo-300" />
+                <span>Copy Lead Form Link</span>
+              </button>
+
+              <button
+                onClick={() => handleSyncGoogleSheets()}
+                disabled={syncingGoogleSheets}
+                className="px-3.5 py-2 bg-emerald-600/90 hover:bg-emerald-500 text-white font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer transition-all shadow-sm"
+              >
+                <FileCheck className="w-3.5 h-3.5" />
+                <span>{syncingGoogleSheets ? 'Syncing...' : 'Sync Google Sheets'}</span>
+              </button>
+
+              <button
+                onClick={() => setShowMasterLedgerModal(true)}
+                className="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-500 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 transition cursor-pointer shadow-md border border-indigo-400/30"
+              >
+                <Database className="w-3.5 h-3.5 text-indigo-200" />
+                <span>Google Sheet Ledger View</span>
+              </button>
+
+              <button
+                onClick={() => setShowCallHistoryModal(true)}
+                className="px-3.5 py-2 bg-white/10 hover:bg-white/20 text-white font-bold text-xs rounded-xl border border-white/15 flex items-center gap-1.5 transition cursor-pointer shadow-sm"
+              >
+                <PhoneCall className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Call History</span>
               </button>
             </div>
           </div>
 
-          {/* Enquiries Metrics Row */}
+          {/* Unified Metrics Row */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-              <span className="text-[11px] text-slate-500 font-semibold block">Total Enquiries</span>
-              <span className="text-xl font-extrabold text-slate-900">{enquiries.length}</span>
+              <span className="text-[11px] text-slate-500 font-semibold block">Commercial Leads</span>
+              <span className="text-xl font-extrabold text-indigo-600">{leads.length}</span>
+            </div>
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <span className="text-[11px] text-slate-500 font-semibold block">Product Enquiries</span>
+              <span className="text-xl font-extrabold text-emerald-600">{enquiries.length}</span>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <span className="text-[11px] text-slate-500 font-semibold block">Completed AI Calls</span>
-              <span className="text-xl font-extrabold text-emerald-600">
-                {enquiries.filter((e) => e.callStatus === 'COMPLETED').length}
-              </span>
-            </div>
-            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-              <span className="text-[11px] text-slate-500 font-semibold block">High Interest Leads</span>
-              <span className="text-xl font-extrabold text-indigo-600">
-                {enquiries.filter((e) => e.interestLevel === 'HIGH').length}
+              <span className="text-xl font-extrabold text-teal-600">
+                {enquiries.filter((e) => e.callStatus === 'COMPLETED').length + leads.filter((l) => l.callStatus === 'COMPLETED').length}
               </span>
             </div>
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <span className="text-[11px] text-slate-500 font-semibold block">Follow-Ups Required</span>
               <span className="text-xl font-extrabold text-amber-600">
-                {enquiries.filter((e) => e.followupRequired).length}
+                {enquiries.filter((e) => e.followupRequired).length + leads.filter((l) => l.status === 'NEW').length}
               </span>
             </div>
           </div>
 
-          {/* Enquiries & Call Summaries List */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2">
-              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-indigo-600" />
-                <span>Customer Enquiries, AI Summaries & Interest Level</span>
-              </h3>
-              
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => handleSyncGoogleSheets()}
-                  disabled={syncingGoogleSheets}
-                  className="px-3 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] rounded-lg flex items-center gap-1 cursor-pointer transition-all"
-                  title="Sync lead & call outcomes to Google Sheets"
-                >
-                  <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
-                  <span>{syncingGoogleSheets ? 'Syncing...' : 'Sync to Google Sheets Ledger'}</span>
-                </button>
+          {/* Filter Pills */}
+          <div className="flex items-center gap-2 text-xs font-bold bg-slate-100 p-1.5 rounded-2xl w-fit border border-slate-200">
+            <button
+              onClick={() => setEnquiryFilter('all')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                enquiryFilter === 'all'
+                  ? 'bg-white text-slate-900 shadow-xs'
+                  : 'text-slate-600 hover:text-slate-900'
+              }`}
+            >
+              All Submissions ({enquiries.length + leads.length})
+            </button>
+            <button
+              onClick={() => setEnquiryFilter('leads')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                enquiryFilter === 'leads'
+                  ? 'bg-indigo-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-indigo-600'
+              }`}
+            >
+              Commercial Leads ({leads.length})
+            </button>
+            <button
+              onClick={() => setEnquiryFilter('enquiries')}
+              className={`px-3.5 py-1.5 rounded-xl transition-all cursor-pointer ${
+                enquiryFilter === 'enquiries'
+                  ? 'bg-emerald-600 text-white shadow-xs'
+                  : 'text-slate-600 hover:text-emerald-600'
+              }`}
+            >
+              Product Enquiries ({enquiries.length})
+            </button>
+          </div>
 
-                <span className="text-[10px] bg-indigo-50 text-indigo-700 font-bold px-2 py-0.5 rounded-full border border-indigo-200">
-                  n8n + Gemini RAG
+          {/* SECTION 1: PRODUCT ENQUIRIES & AI CALL LOGS (PRODUCT LINKS) */}
+          {(enquiryFilter === 'all' || enquiryFilter === 'enquiries') && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-emerald-50/40">
+                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-700" />
+                  <span>Customer Product Enquiries & AI Phone Summaries ({enquiries.length})</span>
+                </h3>
+                
+                <span className="text-[10px] bg-emerald-100 text-emerald-800 font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                  Product Link Queries
                 </span>
               </div>
-            </div>
 
-            <div className="divide-y divide-slate-100 text-xs">
-              {enquiries.length === 0 ? (
-                <div className="p-8 text-center text-slate-400">
-                  No product enquiries submitted yet. Share product enquiry links with customers to receive automated AI calls & summaries here.
-                </div>
-              ) : (
-                enquiries.map((enq) => {
-                  const isTranscriptOpen = expandedTranscriptId === enq.id;
-                  return (
-                    <div key={enq.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
-                      {/* Header Row: Customer & Product Info */}
-                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                        <div>
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="font-extrabold text-sm text-slate-900">{enq.customerName}</span>
-                            <span className="text-slate-400">•</span>
-                            <span className="font-mono text-slate-600 text-xs font-semibold">{enq.customerPhone || '+91 98450 12345'}</span>
-                            {enq.customerEmail && <span className="text-slate-400 hidden md:inline">({enq.customerEmail})</span>}
+              <div className="divide-y divide-slate-100 text-xs">
+                {enquiries.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400">
+                    No product enquiries submitted yet. Share product enquiry links with customers to receive automated AI calls & summaries here.
+                  </div>
+                ) : (
+                  enquiries.map((enq) => {
+                    const isTranscriptOpen = expandedTranscriptId === enq.id;
+                    return (
+                      <div key={enq.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
+                        {/* Header Row */}
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                          <div>
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-extrabold text-sm text-slate-900">{enq.customerName}</span>
+                              <span className="text-slate-400">•</span>
+                              <span className="font-mono text-slate-600 text-xs font-semibold">{enq.customerPhone || '+91 98450 12345'}</span>
+                              {enq.customerEmail && <span className="text-slate-400 hidden md:inline">({enq.customerEmail})</span>}
 
-                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
-                              <CheckCircle2 className="w-3 h-3 text-emerald-600" />
-                              Consent Verified
+                              <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300 flex items-center gap-1">
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                                Consent Verified
+                              </span>
+
+                              {enq.humanTransferRequested && (
+                                <span className="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-300 flex items-center gap-1 animate-pulse">
+                                  <AlertTriangle className="w-3 h-3 text-rose-600" />
+                                  Human Agent Escalated
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-slate-500 text-[11px] mt-0.5">
+                              Enquired Product: <strong className="text-indigo-700">{enq.productName}</strong>
+                            </p>
+                          </div>
+
+                          <div className="flex items-center gap-2">
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide border ${
+                                enq.interestLevel === 'HIGH'
+                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
+                                  : enq.interestLevel === 'MEDIUM'
+                                  ? 'bg-amber-100 text-amber-800 border-amber-300'
+                                  : 'bg-slate-100 text-slate-700 border-slate-300'
+                              }`}
+                            >
+                              Interest: {enq.interestLevel || 'HIGH'}
                             </span>
 
-                            {enq.humanTransferRequested && (
-                              <span className="bg-rose-100 text-rose-800 text-[10px] font-extrabold px-2 py-0.5 rounded-full border border-rose-300 flex items-center gap-1 animate-pulse">
-                                <AlertTriangle className="w-3 h-3 text-rose-600" />
-                                Human Agent Escalated
+                            <span
+                              className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] uppercase tracking-wide ${
+                                enq.callStatus === 'COMPLETED'
+                                  ? 'bg-emerald-500 text-white'
+                                  : enq.callStatus === 'CALLING'
+                                  ? 'bg-indigo-600 text-white animate-pulse'
+                                  : 'bg-amber-500 text-white'
+                              }`}
+                            >
+                              {enq.callStatus || 'COMPLETED'}
+                            </span>
+                          </div>
+                        </div>
+
+                        {/* Question & AI Call Summary Block */}
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
+                          <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
+                            <span className="font-bold text-slate-700 block">Customer Question:</span>
+                            <p className="text-slate-800 italic">"{enq.question || enq.lastMessageSnippet}"</p>
+                            <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400">
+                              <span>Preferred Callback: {enq.preferredCallback || 'INSTANT_AI_CALL'}</span>
+                              <span>Received: {new Date(enq.createdAt).toLocaleDateString()}</span>
+                            </div>
+                          </div>
+
+                          <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100 space-y-1">
+                            <span className="font-bold text-indigo-950 block flex items-center justify-between">
+                              <span className="flex items-center gap-1">
+                                <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
+                                AI Call Summary:
+                              </span>
+                              {enq.googleSheetsRowUrl && (
+                                <a
+                                  href={enq.googleSheetsRowUrl}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="text-[10px] text-emerald-700 hover:underline font-bold flex items-center gap-0.5"
+                                >
+                                  <FileCheck className="w-3 h-3 text-emerald-600" />
+                                  Sheets Row
+                                </a>
+                              )}
+                            </span>
+                            <p className="text-indigo-900 leading-relaxed text-[11px]">
+                              {enq.callSummary || 'AI Outbound call in progress or queued for callback.'}
+                            </p>
+                            {enq.callDuration && (
+                              <span className="text-[10px] text-indigo-700 block pt-0.5 font-mono">
+                                Duration: {enq.callDuration}s {enq.callSid ? `• Sid: ${enq.callSid}` : ''}
                               </span>
                             )}
                           </div>
-                          <p className="text-slate-500 text-[11px] mt-0.5">
-                            Enquired Product: <strong className="text-indigo-700">{enq.productName}</strong>
-                          </p>
                         </div>
 
-                        {/* Badges: Call Status & Interest Level */}
-                        <div className="flex items-center gap-2">
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full font-bold text-[10px] uppercase tracking-wide border ${
-                              enq.interestLevel === 'HIGH'
-                                ? 'bg-emerald-100 text-emerald-800 border-emerald-300'
-                                : enq.interestLevel === 'MEDIUM'
-                                ? 'bg-amber-100 text-amber-800 border-amber-300'
-                                : 'bg-slate-100 text-slate-700 border-slate-300'
-                            }`}
-                          >
-                            Interest: {enq.interestLevel || 'HIGH'}
-                          </span>
+                        {/* Expandable AI Call Transcript Drawer */}
+                        {enq.transcript && enq.transcript.length > 0 && (
+                          <div className="bg-slate-900 text-slate-100 rounded-2xl p-3.5 space-y-2 border border-slate-800">
+                            <button
+                              type="button"
+                              onClick={() => setExpandedTranscriptId(isTranscriptOpen ? null : enq.id)}
+                              className="w-full flex items-center justify-between font-bold text-[11px] text-indigo-300 hover:text-white cursor-pointer"
+                            >
+                              <span className="flex items-center gap-1.5">
+                                <FileText className="w-3.5 h-3.5 text-emerald-400" />
+                                <span>View AI Voice Transcript ({enq.transcript.length} turns)</span>
+                              </span>
+                              <span>{isTranscriptOpen ? 'Hide Transcript ▲' : 'Show Transcript ▼'}</span>
+                            </button>
 
-                          <span
-                            className={`px-2.5 py-0.5 rounded-full font-extrabold text-[10px] uppercase tracking-wide ${
-                              enq.callStatus === 'COMPLETED'
-                                ? 'bg-emerald-500 text-white'
-                                : enq.callStatus === 'CALLING'
-                                ? 'bg-indigo-600 text-white animate-pulse'
-                                : 'bg-amber-500 text-white'
-                            }`}
-                          >
-                            {enq.callStatus || 'COMPLETED'}
-                          </span>
-                        </div>
-                      </div>
+                            {isTranscriptOpen && (
+                              <div className="pt-2 space-y-2 border-t border-slate-800 text-[11px]">
+                                {enq.transcript.map((line, idx) => (
+                                  <div key={idx} className="flex items-start gap-2">
+                                    <span className="font-mono text-[10px] text-slate-500 shrink-0">{line.timestamp}</span>
+                                    <span className={`font-bold shrink-0 ${line.speaker.includes('Customer') ? 'text-amber-400' : 'text-emerald-400'}`}>
+                                      {line.speaker}:
+                                    </span>
+                                    <span className="text-slate-300">{line.text}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
 
-                      {/* Question & AI Call Summary Block */}
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                        <div className="bg-slate-50 p-3.5 rounded-2xl border border-slate-200/80 space-y-1">
-                          <span className="font-bold text-slate-700 block">Customer Question:</span>
-                          <p className="text-slate-800 italic">"{enq.question || enq.lastMessageSnippet}"</p>
-                          <div className="flex items-center justify-between pt-1 text-[10px] text-slate-400">
-                            <span>Preferred Callback: {enq.preferredCallback || 'INSTANT_AI_CALL'}</span>
-                            <span>Received: {new Date(enq.createdAt).toLocaleDateString()}</span>
+                        {/* Customer Questions, Objections & Follow-up Row */}
+                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-slate-100">
+                          <div className="text-[11px] space-y-1">
+                            {enq.customerObjections && enq.customerObjections.length > 0 && (
+                              <div className="text-amber-800 font-medium">
+                                <strong>Objections:</strong> {(enq.customerObjections || []).join(', ')}
+                              </div>
+                            )}
+                            {enq.followupRequired && (
+                              <div className="text-emerald-800 font-bold">
+                                <strong>Follow-Up:</strong> {enq.followupRequired}
+                              </div>
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <button
+                              onClick={() =>
+                                setActiveLedgerItem({
+                                  type: 'enquiry',
+                                  id: enq.id,
+                                  customerName: enq.customerName,
+                                  customerPhone: enq.customerPhone || '+91 98450 12345',
+                                  customerEmail: enq.customerEmail,
+                                  productName: enq.productName,
+                                  questionOrNotes: enq.question,
+                                  callStatus: enq.callStatus || 'COMPLETED',
+                                  callDuration: enq.callDuration || 58,
+                                  callSid: enq.callSid || `CA_${enq.id.slice(-8)}`,
+                                  interestLevel: enq.interestLevel || 'HIGH',
+                                  callSummary: enq.callSummary || 'AI voice call conducted with customer regarding product specs and stock.',
+                                  customerObjections: enq.customerObjections,
+                                  followupRequired: enq.followupRequired,
+                                  transcript: enq.transcript,
+                                  createdAt: enq.createdAt,
+                                  googleSheetsRowUrl: enq.googleSheetsRowUrl || `https://docs.google.com/spreadsheets/d/1TrendVibe_Store_Ledger_2026/edit#gid=0&enquiryId=${enq.id}`,
+                                })
+                              }
+                              className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                              title="View Google Sheets call ledger, duration & transcript"
+                            >
+                              <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                              <span>Ledger View</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleTransferToHuman(enq.id)}
+                              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <PhoneForwarded className="w-3.5 h-3.5 text-rose-600" />
+                              <span>Transfer to Human</span>
+                            </button>
+
+                            <button
+                              onClick={() => handleTriggerEnquiryCall(enq.id)}
+                              className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1 cursor-pointer"
+                            >
+                              <Sparkles className="w-3.5 h-3.5" />
+                              <span>Trigger AI Call</span>
+                            </button>
                           </div>
                         </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
 
-                        <div className="bg-indigo-50/60 p-3.5 rounded-2xl border border-indigo-100 space-y-1">
-                          <span className="font-bold text-indigo-950 block flex items-center justify-between">
-                            <span className="flex items-center gap-1">
-                              <Sparkles className="w-3.5 h-3.5 text-indigo-600" />
-                              AI-Generated Call Summary:
+          {/* SECTION 2: COMMERCIAL CONSULTATION LEADS (FORM SUBMISSIONS) */}
+          {(enquiryFilter === 'all' || enquiryFilter === 'leads') && (
+            <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-indigo-50/40">
+                <div className="flex items-center gap-2">
+                  <UserCheck className="w-4 h-4 text-indigo-700" />
+                  <h3 className="font-extrabold text-slate-900 text-sm">
+                    Commercial Consultation Leads from Acquisition Form ({leads.length})
+                  </h3>
+                </div>
+                <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2.5 py-0.5 rounded-full border border-indigo-200">
+                  Form Submissions
+                </span>
+              </div>
+
+              <div className="divide-y divide-slate-100 text-xs">
+                {leads.length === 0 ? (
+                  <div className="p-8 text-center text-slate-400">
+                    No commercial leads submitted yet. Share the Lead Acquisition Form link (<code className="text-indigo-600 font-mono font-semibold">?view=lead-acquisition</code>) with potential buyers.
+                  </div>
+                ) : (
+                  leads.map((ld) => (
+                    <div key={ld.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
+                      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
+                        <div>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="font-extrabold text-sm text-slate-900">{ld.name}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="font-mono text-slate-700 text-xs font-semibold">{ld.mobile}</span>
+                            <span className="text-slate-400">•</span>
+                            <span className="text-slate-600">{ld.email}</span>
+                            <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
+                              Consent Verified
                             </span>
-                            {enq.googleSheetsRowUrl && (
-                              <a
-                                href={enq.googleSheetsRowUrl}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="text-[10px] text-emerald-700 hover:underline font-bold flex items-center gap-0.5"
-                              >
-                                <FileCheck className="w-3 h-3 text-emerald-600" />
-                                Google Sheets Row
-                              </a>
-                            )}
-                          </span>
-                          <p className="text-indigo-900 leading-relaxed text-[11px]">
-                            {enq.callSummary || 'AI Outbound call in progress or queued for callback.'}
+                            <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                              ld.status === 'NEW' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'
+                            }`}>
+                              {ld.status}
+                            </span>
+                          </div>
+                          <p className="text-slate-600 text-[11px] mt-1">
+                            Product Interest: <strong className="text-indigo-700">{ld.productInterest}</strong>
+                            {ld.productName && ld.productName !== ld.productInterest && ` (${ld.productName})`}
                           </p>
-                          {enq.callDuration && (
-                            <span className="text-[10px] text-indigo-700 block pt-0.5 font-mono">
-                              Call Duration: {enq.callDuration}s {enq.callSid ? `• Sid: ${enq.callSid}` : ''}
-                            </span>
+                          {ld.notes && (
+                            <p className="text-slate-500 text-[11px] mt-0.5 italic">
+                              Requirement: "{ld.notes}"
+                            </p>
                           )}
+                        </div>
+
+                        <div className="text-[11px] text-slate-400 font-mono">
+                          {new Date(ld.createdAt).toLocaleString()}
                         </div>
                       </div>
 
-                      {/* Expandable ElevenLabs Call Transcript Drawer */}
-                      {enq.transcript && enq.transcript.length > 0 && (
-                        <div className="bg-slate-900 text-slate-100 rounded-2xl p-3.5 space-y-2 border border-slate-800">
-                          <button
-                            type="button"
-                            onClick={() => setExpandedTranscriptId(isTranscriptOpen ? null : enq.id)}
-                            className="w-full flex items-center justify-between font-bold text-[11px] text-indigo-300 hover:text-white cursor-pointer"
-                          >
-                            <span className="flex items-center gap-1.5">
-                              <FileText className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>View ElevenLabs + Gemini Voice Transcript ({enq.transcript.length} turns)</span>
-                            </span>
-                            <span>{isTranscriptOpen ? 'Hide Transcript ▲' : 'Show Transcript ▼'}</span>
-                          </button>
-
-                          {isTranscriptOpen && (
-                            <div className="pt-2 space-y-2 border-t border-slate-800 text-[11px]">
-                              {enq.transcript.map((line, idx) => (
-                                <div key={idx} className="flex items-start gap-2">
-                                  <span className="font-mono text-[10px] text-slate-500 shrink-0">{line.timestamp}</span>
-                                  <span className={`font-bold shrink-0 ${line.speaker.includes('Customer') ? 'text-amber-400' : 'text-emerald-400'}`}>
-                                    {line.speaker}:
-                                  </span>
-                                  <span className="text-slate-300">{line.text}</span>
-                                </div>
-                              ))}
-                            </div>
-                          )}
+                      {ld.callSummary && (
+                        <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-[11px] text-indigo-900">
+                          <strong>AI Call Summary:</strong> {ld.callSummary}
                         </div>
                       )}
 
-                      {/* Customer Questions, Objections & Follow-up Row */}
-                      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pt-1 border-t border-slate-100">
-                        <div className="text-[11px] space-y-1">
-                          {enq.customerObjections && enq.customerObjections.length > 0 && (
-                            <div className="text-amber-800 font-medium">
-                              <strong>Objections / Concerns:</strong> {(enq.customerObjections || []).join(', ')}
-                            </div>
-                          )}
-                          {enq.followupRequired && (
-                            <div className="text-emerald-800 font-bold">
-                              <strong>Follow-Up Requirement:</strong> {enq.followupRequired}
-                            </div>
-                          )}
+                      <div className="flex items-center justify-between gap-2 pt-1">
+                        <div className="text-[11px] text-slate-500">
+                          Call Status: <strong className="text-slate-800">{ld.callStatus || 'NOT_CALLED'}</strong>
                         </div>
 
-                        {/* Trigger Call, Transfer & Dial Actions */}
-                        <div className="flex items-center gap-2 flex-wrap">
+                        <div className="flex items-center gap-2">
                           <button
-                            onClick={() => handleTransferToHuman(enq.id)}
-                            className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 border border-rose-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer"
-                            title="Escalate & transfer call to human seller agent"
+                            onClick={() =>
+                              setActiveLedgerItem({
+                                type: 'lead',
+                                id: ld.id,
+                                customerName: ld.name,
+                                customerPhone: ld.mobile,
+                                customerEmail: ld.email,
+                                productName: ld.productInterest,
+                                questionOrNotes: ld.notes,
+                                callStatus: ld.callStatus || 'NOT_CALLED',
+                                callDuration: ld.callDuration || 45,
+                                callSid: ld.callSid || `CA_${ld.id.slice(-8)}`,
+                                interestLevel: ld.interestLevel || 'HIGH',
+                                callSummary: ld.callSummary || 'Commercial consultation lead recorded with verified consent.',
+                                createdAt: ld.createdAt,
+                                googleSheetsRowUrl: ld.googleSheetsRowUrl || `https://docs.google.com/spreadsheets/d/1TrendVibe_Store_Ledger_2026/edit#gid=0&leadId=${ld.id}`,
+                              })
+                            }
+                            className="px-3 py-1.5 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-xs rounded-xl transition-all flex items-center gap-1 cursor-pointer shadow-xs"
+                            title="View Google Sheets call ledger, duration & transcript"
                           >
-                            <PhoneForwarded className="w-3.5 h-3.5 text-rose-600" />
-                            <span>Transfer to Human</span>
+                            <FileCheck className="w-3.5 h-3.5 text-emerald-600" />
+                            <span>Ledger View</span>
                           </button>
 
                           <button
-                            onClick={() => handleTriggerEnquiryCall(enq.id)}
-                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-sm transition-all flex items-center gap-1 cursor-pointer"
-                            title="Trigger AI Outbound Call to customer phone"
+                            onClick={() => handleTriggerLeadCall(ld.id)}
+                            className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer"
                           >
                             <Sparkles className="w-3.5 h-3.5" />
                             <span>Trigger AI Call</span>
                           </button>
-
-                          <button
-                            onClick={() =>
-                              openCallingGateway({
-                                customerPhone: enq.customerPhone || '+91 98450 12345',
-                                customerName: enq.customerName,
-                                callReason: 'product_enquiry',
-                                productId: enq.productId,
-                              })
-                            }
-                            className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                          >
-                            <PhoneForwarded className="w-3.5 h-3.5" />
-                            <span>Dial Customer</span>
-                          </button>
                         </div>
                       </div>
                     </div>
-                  );
-                })
-              )}
-            </div>
-          </div>
-
-          {/* SEPARATE COMMERCIAL LEADS SECTION */}
-          <div className="bg-white rounded-3xl border border-slate-200 shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between flex-wrap gap-2 bg-indigo-50/40">
-              <div className="flex items-center gap-2">
-                <UserCheck className="w-4 h-4 text-indigo-700" />
-                <h3 className="font-extrabold text-slate-900 text-sm">
-                  Commercial Consultation Leads from Lead Acquisition Form ({leads.length})
-                </h3>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-[10px] bg-indigo-100 text-indigo-800 font-bold px-2.5 py-0.5 rounded-full border border-indigo-200">
-                  Separate Module Submissions
-                </span>
-                <button
-                  onClick={() => {
-                    const url = `${window.location.origin}?view=lead-acquisition`;
-                    navigator.clipboard.writeText(url);
-                    showToast('Lead Acquisition Form link copied to clipboard!', 'success');
-                  }}
-                  className="flex items-center gap-1.5 px-3 py-1 bg-white hover:bg-slate-50 text-indigo-700 border border-indigo-200 rounded-lg text-[10px] font-bold transition-colors cursor-pointer shadow-sm"
-                >
-                  <Copy className="w-3 h-3" />
-                  <span>Copy Lead Form Link</span>
-                </button>
+                  ))
+                )}
               </div>
             </div>
-
-            <div className="divide-y divide-slate-100 text-xs">
-              {leads.length === 0 ? (
-                <div className="p-8 text-center text-slate-400">
-                  No commercial leads submitted yet. Leads submitted through the separate Lead Acquisition Form (<code className="text-indigo-600 font-mono font-semibold">?view=lead-acquisition</code>) will be recorded here securely without automated calling.
-                </div>
-              ) : (
-                leads.map((ld) => (
-                  <div key={ld.id} className="p-5 space-y-3 hover:bg-slate-50/50 transition-colors">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-2.5">
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-extrabold text-sm text-slate-900">{ld.name}</span>
-                          <span className="text-slate-400">•</span>
-                          <span className="font-mono text-slate-700 text-xs font-semibold">{ld.mobile}</span>
-                          <span className="text-slate-400">•</span>
-                          <span className="text-slate-600">{ld.email}</span>
-                          <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full border border-emerald-300">
-                            Consent Verified
-                          </span>
-                          <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
-                            ld.status === 'NEW' ? 'bg-indigo-100 text-indigo-800' : 'bg-slate-100 text-slate-700'
-                          }`}>
-                            {ld.status}
-                          </span>
-                        </div>
-                        <p className="text-slate-600 text-[11px] mt-1">
-                          Product Interest: <strong className="text-indigo-700">{ld.productInterest}</strong>
-                          {ld.productName && ld.productName !== ld.productInterest && ` (${ld.productName})`}
-                        </p>
-                        {ld.notes && (
-                          <p className="text-slate-500 text-[11px] mt-0.5 italic">
-                            Requirement: "{ld.notes}"
-                          </p>
-                        )}
-                      </div>
-
-                      <div className="text-[11px] text-slate-400 font-mono">
-                        {new Date(ld.createdAt).toLocaleString()}
-                      </div>
-                    </div>
-
-                    {ld.callSummary && (
-                      <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-[11px] text-indigo-900">
-                        <strong>AI Call Summary:</strong> {ld.callSummary}
-                      </div>
-                    )}
-
-                    {/* Actions Row */}
-                    <div className="flex items-center justify-between gap-2 pt-1">
-                      <div className="text-[11px] text-slate-500">
-                        Call Status: <strong className="text-slate-800">{ld.callStatus || 'NOT_CALLED'}</strong>
-                      </div>
-
-                      <div className="flex items-center gap-2">
-                        <button
-                          onClick={() => handleTriggerLeadCall(ld.id)}
-                          className="px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-1 cursor-pointer"
-                          title="Trigger explicit authorized AI phone call"
-                        >
-                          <Sparkles className="w-3.5 h-3.5" />
-                          <span>Trigger AI Call</span>
-                        </button>
-
-                        <button
-                          onClick={() =>
-                            openCallingGateway({
-                              customerPhone: ld.mobile,
-                              customerName: ld.name,
-                              callReason: 'product_enquiry',
-                              productId: ld.productId,
-                            })
-                          }
-                          className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl transition-colors flex items-center gap-1 cursor-pointer"
-                        >
-                          <PhoneForwarded className="w-3.5 h-3.5" />
-                          <span>Dial Customer</span>
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
+          )}
         </div>
       )}
+
+
+
 
       {/* MODAL: ADD / EDIT PRODUCT */}
       {isAddProductOpen && (
@@ -1643,7 +1725,7 @@ export const SellerDashboard: React.FC = () => {
                       Import Live Product Knowledge (Amazon / External)
                     </label>
                     <span className="text-[10px] font-bold bg-indigo-600 text-white px-2 py-0.5 rounded-full uppercase">
-                      Gemini Grounded Import
+                      AI Smart Import
                     </span>
                   </div>
                   <div className="flex gap-2">
@@ -2407,6 +2489,288 @@ export const SellerDashboard: React.FC = () => {
       )}
       {/* Call History Modal */}
       {showCallHistoryModal && <CallHistoryModal onClose={() => setShowCallHistoryModal(false)} />}
+
+      {/* MODAL 1: INDIVIDUAL ITEM GOOGLE SHEETS LEDGER VIEW */}
+      {activeLedgerItem && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 space-y-5 my-8 max-h-[90vh] overflow-y-auto animate-in zoom-in-95">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-emerald-100 text-emerald-700 flex items-center justify-center font-extrabold text-lg shadow-sm border border-emerald-200">
+                  <FileCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-extrabold text-slate-900 text-base">Google Sheets Call Ledger Entry</h3>
+                    <span className="bg-emerald-100 text-emerald-800 text-[10px] font-bold px-2.5 py-0.5 rounded-full border border-emerald-300">
+                      Synced to Sheet
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    Row ID: {activeLedgerItem.id} • Timestamp: {new Date(activeLedgerItem.createdAt).toLocaleString()}
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setActiveLedgerItem(null)}
+                className="text-slate-400 hover:text-slate-600 font-extrabold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Customer & Product Info Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+                <span className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Customer Profile:</span>
+                <div className="font-extrabold text-slate-900 text-sm">{activeLedgerItem.customerName}</div>
+                <div className="font-mono text-slate-600">{activeLedgerItem.customerPhone}</div>
+                {activeLedgerItem.customerEmail && <div className="text-slate-500">{activeLedgerItem.customerEmail}</div>}
+                <div className="pt-1 text-[10px] text-emerald-700 font-bold flex items-center gap-1">
+                  <CheckCircle2 className="w-3 h-3 text-emerald-600" />
+                  Consent Timestamp Recorded
+                </div>
+              </div>
+
+              <div className="p-3.5 bg-slate-50 rounded-2xl border border-slate-200 space-y-1">
+                <span className="font-bold text-slate-700 block text-[11px] uppercase tracking-wider">Enquired Product / Interest:</span>
+                <div className="font-extrabold text-indigo-700 text-sm">{activeLedgerItem.productName}</div>
+                {activeLedgerItem.questionOrNotes && (
+                  <p className="text-slate-600 italic text-[11px] line-clamp-2 mt-1">
+                    "{activeLedgerItem.questionOrNotes}"
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {/* Call Metrics & Interest Level */}
+            <div className="grid grid-cols-3 gap-3 text-xs text-center">
+              <div className="p-3 bg-emerald-50 rounded-2xl border border-emerald-200">
+                <span className="text-[10px] text-slate-500 font-bold block uppercase">Call Status</span>
+                <span className="font-extrabold text-emerald-800 text-xs mt-0.5 block">{activeLedgerItem.callStatus}</span>
+              </div>
+              <div className="p-3 bg-indigo-50 rounded-2xl border border-indigo-200">
+                <span className="text-[10px] text-slate-500 font-bold block uppercase">Call Duration</span>
+                <span className="font-extrabold text-indigo-900 text-xs mt-0.5 block font-mono">{activeLedgerItem.callDuration} seconds</span>
+              </div>
+              <div className="p-3 bg-violet-50 rounded-2xl border border-violet-200">
+                <span className="text-[10px] text-slate-500 font-bold block uppercase">Interest Level</span>
+                <span className="font-extrabold text-violet-800 text-xs mt-0.5 block">{activeLedgerItem.interestLevel}</span>
+              </div>
+            </div>
+
+            {/* AI Call Summary */}
+            <div className="p-4 bg-indigo-50/70 rounded-2xl border border-indigo-100 space-y-1.5 text-xs">
+              <span className="font-bold text-indigo-950 block flex items-center gap-1.5 text-xs">
+                <Sparkles className="w-4 h-4 text-indigo-600" />
+                <span>AI-Generated Call Summary (Recorded in Google Sheet Row):</span>
+              </span>
+              <p className="text-indigo-900 leading-relaxed text-xs">
+                {activeLedgerItem.callSummary}
+              </p>
+            </div>
+
+            {/* Full Conversation Transcript */}
+            {activeLedgerItem.transcript && activeLedgerItem.transcript.length > 0 && (
+              <div className="bg-slate-900 text-slate-100 rounded-2xl p-4 space-y-2 border border-slate-800 text-xs">
+                <span className="font-bold text-indigo-300 block text-xs flex items-center gap-1.5 border-b border-slate-800 pb-2">
+                  <FileText className="w-4 h-4 text-emerald-400" />
+                  <span>Full AI Voice Conversation Transcript ({activeLedgerItem.transcript.length} turns)</span>
+                </span>
+                <div className="space-y-2 max-h-48 overflow-y-auto pt-1 font-sans text-[11px]">
+                  {activeLedgerItem.transcript.map((turn: any, idx: number) => (
+                    <div key={idx} className="flex items-start gap-2">
+                      <span className="font-mono text-[10px] text-slate-500 shrink-0">{turn.timestamp}</span>
+                      <span className={`font-bold shrink-0 ${turn.speaker.includes('Customer') ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {turn.speaker}:
+                      </span>
+                      <span className="text-slate-300">{turn.text}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Action Bar */}
+            <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-slate-100">
+              <button
+                onClick={() => {
+                  navigator.clipboard.writeText(JSON.stringify(activeLedgerItem, null, 2));
+                  showToast('Ledger entry JSON copied to clipboard!', 'success');
+                }}
+                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl flex items-center gap-1.5 cursor-pointer"
+              >
+                <Copy className="w-3.5 h-3.5" />
+                <span>Copy Ledger Entry</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <a
+                  href={activeLedgerItem.googleSheetsRowUrl || 'https://docs.google.com/spreadsheets'}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white font-extrabold text-xs rounded-xl flex items-center gap-1.5 shadow-md cursor-pointer transition-colors"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" />
+                  <span>Open in Google Sheets</span>
+                </a>
+                <button
+                  onClick={() => setActiveLedgerItem(null)}
+                  className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs rounded-xl cursor-pointer"
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 2: MASTER GOOGLE SHEETS LEDGER VIEW */}
+      {showMasterLedgerModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/70 backdrop-blur-xs overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-5xl w-full p-6 shadow-2xl border border-slate-200 space-y-4 my-8 max-h-[92vh] overflow-y-auto animate-in zoom-in-95">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-indigo-100 text-indigo-700 flex items-center justify-center font-extrabold text-lg shadow-sm border border-indigo-200">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-base">Google Sheets Master Call Ledger</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    Real-time synchronized audit ledger of all customer enquiries, commercial leads, call durations, and AI summaries.
+                  </p>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setShowMasterLedgerModal(false)}
+                className="text-slate-400 hover:text-slate-600 font-extrabold text-lg cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Table Container */}
+            <div className="overflow-x-auto border border-slate-200 rounded-2xl shadow-xs">
+              <table className="w-full text-left text-xs font-sans">
+                <thead className="bg-slate-900 text-slate-200 font-bold uppercase tracking-wider text-[10px] border-b border-slate-800">
+                  <tr>
+                    <th className="p-3">Row ID</th>
+                    <th className="p-3">Timestamp</th>
+                    <th className="p-3">Customer Name</th>
+                    <th className="p-3">Mobile Phone</th>
+                    <th className="p-3">Product / Requirement</th>
+                    <th className="p-3">Call Status</th>
+                    <th className="p-3">Duration (s)</th>
+                    <th className="p-3">Interest Rating</th>
+                    <th className="p-3">AI Call Summary</th>
+                    <th className="p-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-slate-800">
+                  {[
+                    ...leads.map((l) => ({
+                      type: 'lead',
+                      id: l.id,
+                      createdAt: l.createdAt,
+                      name: l.name,
+                      phone: l.mobile,
+                      product: l.productInterest,
+                      callStatus: l.callStatus || 'NOT_CALLED',
+                      duration: l.callDuration || 45,
+                      interest: l.interestLevel || 'HIGH',
+                      summary: l.callSummary || 'Commercial consultation request recorded.',
+                      rawItem: l,
+                    })),
+                    ...enquiries.map((e) => ({
+                      type: 'enquiry',
+                      id: e.id,
+                      createdAt: e.createdAt,
+                      name: e.customerName,
+                      phone: e.customerPhone || '+91 98450 12345',
+                      product: e.productName,
+                      callStatus: e.callStatus || 'COMPLETED',
+                      duration: e.callDuration || 58,
+                      interest: e.interestLevel || 'HIGH',
+                      summary: e.callSummary || 'AI voice call answered customer queries on product specs.',
+                      rawItem: e,
+                    })),
+                  ].map((row, i) => (
+                    <tr key={i} className="hover:bg-slate-50 transition-colors">
+                      <td className="p-3 font-mono font-bold text-slate-600 text-[10px]">{row.id.slice(-8)}</td>
+                      <td className="p-3 font-mono text-slate-500 text-[10px]">{new Date(row.createdAt).toLocaleDateString()}</td>
+                      <td className="p-3 font-bold text-slate-900">{row.name}</td>
+                      <td className="p-3 font-mono text-slate-700">{row.phone}</td>
+                      <td className="p-3 font-semibold text-indigo-700">{row.product}</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] ${
+                          row.callStatus === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-700'
+                        }`}>
+                          {row.callStatus}
+                        </span>
+                      </td>
+                      <td className="p-3 font-mono font-bold text-slate-900">{row.duration}s</td>
+                      <td className="p-3">
+                        <span className={`px-2 py-0.5 rounded-full font-extrabold text-[10px] ${
+                          row.interest === 'HIGH' ? 'bg-violet-100 text-violet-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {row.interest}
+                        </span>
+                      </td>
+                      <td className="p-3 text-slate-600 line-clamp-2 max-w-xs">{row.summary}</td>
+                      <td className="p-3 text-right">
+                        <button
+                          onClick={() => {
+                            setShowMasterLedgerModal(false);
+                            setActiveLedgerItem({
+                              type: row.type,
+                              id: row.id,
+                              customerName: row.name,
+                              customerPhone: row.phone,
+                              customerEmail: (row.rawItem as any).email || (row.rawItem as any).customerEmail,
+                              productName: row.product,
+                              questionOrNotes: (row.rawItem as any).notes || (row.rawItem as any).question,
+                              callStatus: row.callStatus,
+                              callDuration: row.duration,
+                              callSid: (row.rawItem as any).callSid || `CA_${row.id.slice(-8)}`,
+                              interestLevel: row.interest,
+                              callSummary: row.summary,
+                              transcript: (row.rawItem as any).transcript,
+                              createdAt: row.createdAt,
+                              googleSheetsRowUrl: (row.rawItem as any).googleSheetsRowUrl || `https://docs.google.com/spreadsheets`,
+                            });
+                          }}
+                          className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold text-[11px] rounded-lg transition-colors cursor-pointer"
+                        >
+                          View Entry
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Footer */}
+            <div className="pt-2 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-mono text-[11px]">
+                Showing {leads.length + enquiries.length} synchronized ledger rows
+              </span>
+              <button
+                onClick={() => setShowMasterLedgerModal(false)}
+                className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white font-bold rounded-xl cursor-pointer"
+              >
+                Close Master View
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

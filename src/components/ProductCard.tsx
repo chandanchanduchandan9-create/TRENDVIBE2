@@ -22,7 +22,7 @@ interface ProductCardProps {
 }
 
 export const ProductCard: React.FC<ProductCardProps> = ({ product }) => {
-  const { addToCart, openProduct, openEnquiryModal, startCallingBot, showToast } = useApp();
+  const { addToCart, openProduct, openEnquiryModal, showToast } = useApp();
   const [copiedLink, setCopiedLink] = useState(false);
   const [copiedEnquiryLink, setCopiedEnquiryLink] = useState(false);
   const [showShareMenu, setShowShareMenu] = useState(false);

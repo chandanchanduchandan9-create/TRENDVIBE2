@@ -544,6 +544,20 @@ function trainedKnowledgeGuidance(
       };
     }
 
+    if (intent === 'SPECIFICATIONS' || intent === 'PRODUCT_OVERVIEW' || targetProduct.pdfExtractedText) {
+      const pdfText = targetProduct.pdfExtractedText ? ` [Verified PDF Specification: ${targetProduct.pdfExtractedText}]` : '';
+      const specsText = targetProduct.specifications ? Object.entries(targetProduct.specifications).map(([k, v]) => `${k}: ${v}`).join('; ') : '';
+      const responseDetail = `${targetProduct.name} - ${targetProduct.description || targetProduct.shortDescription}.${specsText ? ` Specs: ${specsText}.` : ''}${pdfText}`;
+
+      return {
+        reply: responseDetail,
+        kannadaReply: targetProduct.kannadaName ? `${targetProduct.kannadaName}: ${responseDetail}` : responseDetail,
+        languageDetected: /[\u0C80-\u0CFF]/.test(message) ? 'kn' : 'en',
+        citations: [...citations, ...(targetProduct.pdfDocName ? [targetProduct.pdfDocName] : [])],
+        intent: 'SPECIFICATIONS',
+      };
+    }
+
     if (intent === 'PLACE_ORDER') {
       const qtyMatch = message.match(/\b([1-9]|10)\b/);
       const qty = qtyMatch ? parseInt(qtyMatch[1], 10) : minOrderQty;
@@ -732,10 +746,14 @@ export async function processBotConversation(input: BotChatInput): Promise<BotCh
   }
 
   // 3. System Instructions for Gemini Real-Time Voice Model
+  const sellerDocs = db.getDocuments();
+
   const productCatalogueSummary = allProducts.map((p) => ({
     id: p.id,
     name: p.name,
     brand: p.brand,
+    sellerId: p.sellerId,
+    sellerName: p.sellerName || 'Priya Sharma (TrendVibe Central Hub)',
     category: p.category,
     price: p.price,
     mrp: p.mrp,
@@ -744,23 +762,33 @@ export async function processBotConversation(input: BotChatInput): Promise<BotCh
     minOrderQuantity: p.minOrderQuantity || 1,
     sellingUnit: p.sellingUnit || 'piece',
     isExpress30Min: isProductExpress30MinEligible(p),
+    description: p.description,
+    shortDescription: p.shortDescription,
+    specifications: p.specifications,
+    pdfDocName: p.pdfDocName,
+    pdfExtractedText: p.pdfExtractedText,
   }));
 
   const systemInstruction = `
-You are the Customer Enquiry Bot, the real-time AI Voice Assistant for TrendVibe Store.
-Your job is to speak naturally with customers over phone calls, understand their spoken questions in English, Hindi, or Kannada, provide accurate product information, help them place orders, and track live shipments.
+You are the Customer Enquiry Bot, the intelligent AI Voice and Chat Assistant for TrendVibe Store.
+Your primary role is to assist customers with accurate product information, certified specification lookup, dosage/usage guidance, order placement, and live shipment tracking.
 
-LIVE KNOWLEDGE CAPABILITY:
-You have access to real-time product knowledge via Google Search. If a customer asks about latest live prices on Amazon or external technical specs not in our catalog, you can look them up live to provide the most accurate advice.
+SELLER & CATALOGUE KNOWLEDGE (Priya Sharma - TrendVibe Central Hub):
+You have complete, verified specification datasheets and PDF laboratory certificates for all products sold by Priya Sharma (Seller ID: usr-seller-1), including certified OTC medicines (Dolo 650, Calpol 500, Electral, Moov, MenthoPlus), organic food kitchen items (Sprouted Ragi Idli, Steamed Veg Idli, Homemade Protein Ladoo, Oats Banana Pancake, Peanut Banana Protein Smoothie), flagship mobile phones (iPhone 16, Samsung S25, Pixel 9a, OnePlus 13), laptops (ASUS TUF F15, Vivobook 15, Dell Inspiron, Lenovo IdeaPad), cosmetics (Minimalist Niacinamide, Cetaphil Cleanser, Dot & Key Sunscreen, Maybelline Matte Ink), shoes, and apparel.
+
+When customers ask any question about a product—such as its ingredients, protein/calcium content, dosage, battery life, GPU, durability standards, or PDF monograph details—read from the product's "pdfExtractedText", "specifications", and "description" provided in the catalogue below. Give precise, confident, and accurate answers.
 
 CRITICAL CONSTRAINTS:
-1. NEVER INVENT or make up product details, discounts, stock, warranty, or shipment tracking information! If information is unavailable, tell the customer honestly.
-2. Maintain natural voice conversational dialogue. Keep responses clear, concise (1-3 sentences for phone calls), and helpful.
+1. NEVER INVENT or make up product details, discounts, stock, warranty, or shipment tracking information! Use the attached product data and PDF extracted text.
+2. Maintain natural, polite, and professional conversational dialogue. Keep answers concise, clear, and informative.
 3. If customer asks about order tracking, confirm order status, courier partner, tracking number, and estimated delivery date from real records.
 4. If customer wants to buy, guide them through product confirmation, quantity, total price, and order creation.
 
-CONNECTED DB PRODUCTS:
+CONNECTED DB PRODUCTS WITH VERIFIED PDF LAB DATA & SPECS:
 ${JSON.stringify(productCatalogueSummary, null, 2)}
+
+INDEXED SELLER DOCUMENTS & KNOWLEDGE BASE:
+${JSON.stringify(sellerDocs.map(d => ({ title: d.fileName, text: d.extractedText, productId: d.productId })), null, 2)}
 
 CURRENT PRODUCT IN FOCUS:
 ${currentProduct ? JSON.stringify({ ...currentProduct, isExpress30Min: isProductExpress30MinEligible(currentProduct) }, null, 2) : 'Store catalogue.'}

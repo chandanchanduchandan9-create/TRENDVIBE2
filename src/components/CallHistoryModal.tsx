@@ -77,7 +77,7 @@ export const CallHistoryModal: React.FC<CallHistoryModalProps> = ({ onClose }) =
             </div>
             <div>
               <h2 className="text-lg font-black tracking-tight">Real-Time AI Call History & Status Logs</h2>
-              <p className="text-xs text-slate-300">Live telemetry from Twilio Telephony & ElevenLabs / Gemini AI Agent</p>
+              <p className="text-xs text-slate-300">Live telemetry from Telecom Gateway & Neural AI Assistant</p>
             </div>
           </div>
 
@@ -219,7 +219,7 @@ export const CallHistoryModal: React.FC<CallHistoryModalProps> = ({ onClose }) =
                       >
                         <div className="flex items-center justify-between text-[10px] text-slate-400">
                           <span className="font-bold uppercase tracking-wider text-indigo-300">
-                            {t.sender === 'customer' ? '🗣️ Customer' : '🤖 Zyro AI Assistant'}
+                            {t.sender === 'customer' ? '🗣️ Customer' : '🤖 AI Assistant'}
                           </span>
                           <span className="font-mono">{new Date(t.timestamp).toLocaleTimeString()}</span>
                         </div>
@@ -236,7 +236,7 @@ export const CallHistoryModal: React.FC<CallHistoryModalProps> = ({ onClose }) =
             )}
 
             <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-400 flex items-center justify-between">
-              <span>Twilio Webhooks & Persistent MongoDB Log Synced</span>
+              <span>Telecom Webhooks & Cloud Logs Synced</span>
               <span>Secure Telephony Gateway</span>
             </div>
           </div>

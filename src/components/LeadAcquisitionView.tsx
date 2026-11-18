@@ -9,7 +9,6 @@ import {
   Check,
   Share2,
   CheckCircle2,
-  Sparkles,
   Phone,
   Mail,
   User,
@@ -18,7 +17,6 @@ import {
   ArrowRight,
   FileText,
 } from 'lucide-react';
-import { VoiceAssistantModal } from './VoiceAssistantModal.tsx';
 
 export const LeadAcquisitionView: React.FC = () => {
   const { user, showToast } = useApp();
@@ -34,7 +32,6 @@ export const LeadAcquisitionView: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [copiedLink, setCopiedLink] = useState(false);
   const [submittedLead, setSubmittedLead] = useState<any | null>(null);
-  const [isVoiceAssistantOpen, setIsVoiceAssistantOpen] = useState(false);
 
   // Load product list for interest dropdown
   useEffect(() => {
@@ -138,8 +135,7 @@ export const LeadAcquisitionView: React.FC = () => {
       });
 
       setSubmittedLead(res.lead);
-      setIsVoiceAssistantOpen(true);
-      showToast('Lead submitted successfully! Connecting to AI Shopping Assistant...', 'success');
+      showToast('Lead submitted successfully! Details recorded.', 'success');
     } catch (err: any) {
       showToast(`Submission failed: ${err.message}`, 'error');
     } finally {
@@ -228,21 +224,6 @@ export const LeadAcquisitionView: React.FC = () => {
                 <span className="text-slate-400 font-medium">Recorded At:</span>
                 <span className="text-slate-500">{new Date(submittedLead.createdAt).toLocaleString()}</span>
               </div>
-            </div>
-
-            {/* AI Website Voice Assistant Button */}
-            <div className="pt-2 max-w-md mx-auto w-full space-y-2">
-              <div className="p-3 bg-indigo-50 border border-indigo-100 rounded-xl text-[11px] text-indigo-900 text-center">
-                Want immediate answers about batch availability, bulk pricing, or shipping?
-              </div>
-              <button
-                type="button"
-                onClick={() => setIsVoiceAssistantOpen(true)}
-                className="w-full py-3.5 px-4 bg-gradient-to-r from-indigo-600 via-indigo-700 to-violet-700 hover:from-indigo-500 hover:to-violet-600 text-white font-extrabold text-xs sm:text-sm rounded-2xl shadow-lg shadow-indigo-500/25 flex items-center justify-center gap-2.5 transition-all transform hover:-translate-y-0.5 cursor-pointer"
-              >
-                <Sparkles className="w-4 h-4 text-indigo-200" />
-                <span>Talk to Our AI Shopping Assistant</span>
-              </button>
             </div>
 
             {/* Actions: Stays on form without redirecting to website */}
@@ -416,36 +397,6 @@ export const LeadAcquisitionView: React.FC = () => {
               )}
             </button>
           </form>
-        )}
-
-        {/* Reusable Voice Assistant Modal */}
-        {submittedLead && (
-          <VoiceAssistantModal
-            isOpen={isVoiceAssistantOpen}
-            onClose={() => setIsVoiceAssistantOpen(false)}
-            autoStart={true}
-            context={{
-              leadId: submittedLead.id,
-              productName: selectedProdObj?.name || submittedLead.productInterest,
-              productId: selectedProdObj?.id,
-              productDetails: selectedProdObj
-                ? {
-                    name: selectedProdObj.name,
-                    brand: selectedProdObj.brand,
-                    price: selectedProdObj.price,
-                    mrp: selectedProdObj.mrp,
-                    category: selectedProdObj.category,
-                    inStock: (selectedProdObj.stock?.available ?? 0) > 0,
-                    availableStock: selectedProdObj.stock?.available ?? 0,
-                    express30Min: Boolean(selectedProdObj.deliveryConfig?.supportsExpress30Min),
-                    kannadaName: selectedProdObj.kannadaName || '',
-                    description: selectedProdObj.description || selectedProdObj.shortDescription || '',
-                  }
-                : undefined,
-              customerName: submittedLead.name,
-              customerPhone: submittedLead.mobile,
-            }}
-          />
         )}
       </div>
     </div>

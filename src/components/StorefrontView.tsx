@@ -29,7 +29,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
   selectedCategory,
   setSelectedCategory,
 }) => {
-  const { categories, setActiveTab, showToast, activeTab } = useApp();
+  const { categories, showToast, activeTab } = useApp();
 
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
@@ -91,16 +91,6 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
           <p className="text-slate-300 text-xs sm:text-base leading-relaxed max-w-2xl">
             Explore 8 certified product categories from healthcare & fresh food to flagship 5G smartphones and gaming laptops. Benefit from instant verified recommendations, price drop tracking, and 30-minute express deliveries.
           </p>
-
-          <div className="flex flex-wrap items-center gap-3 pt-2">
-            <button
-              onClick={() => setActiveTab('ai-shopping')}
-              className="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs sm:text-sm rounded-2xl border border-indigo-500 shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 cursor-pointer"
-            >
-              <Sparkles className="w-4 h-4 text-white" />
-              <span>Smart Product Search</span>
-            </button>
-          </div>
         </div>
       </div>
 
@@ -249,7 +239,7 @@ export const StorefrontView: React.FC<StorefrontViewProps> = ({
             <Search className="w-10 h-10 text-slate-300 mx-auto mb-3" />
             <h3 className="text-base font-bold text-slate-900">No matching products found</h3>
             <p className="text-xs text-slate-500 mt-1 max-w-sm mx-auto">
-              Try adjusting your search query, clearing filters, or asking Customer Enquiry Bot to look up the item.
+              Try adjusting your search query or clearing your active filters.
             </p>
             <button
               onClick={() => {
