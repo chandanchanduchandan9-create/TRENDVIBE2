@@ -58,7 +58,7 @@ import {
 export const SellerDashboard: React.FC = () => {
   const { user, categories, showToast, openSellerStore } = useApp();
 
-  const [activeSubTab, setActiveSubTab] = useState<'products' | 'enquiries' | 'inventory' | 'delivery' | 'analytics' | 'finance'>('products');
+  const [activeSubTab, setActiveSubTab] = useState<'products' | 'enquiries' | 'inventory' | 'delivery' | 'analytics' | 'finance' | 'voice_sync'>('products');
   const [enquiryFilter, setEnquiryFilter] = useState<'all' | 'leads' | 'enquiries'>('all');
   const [products, setProducts] = useState<Product[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
@@ -100,6 +100,15 @@ export const SellerDashboard: React.FC = () => {
   const [imageUploading, setImageUploading] = useState(false);
   const [newImageUrlInput, setNewImageUrlInput] = useState('');
   const [isImportingAmazon, setIsImportingAmazon] = useState(false);
+
+  // Manual Outbound Call & TrendVibe Voice Sync State
+  const [manualDialPhone, setManualDialPhone] = useState('+91 72046 18908');
+  const [manualDialProduct, setManualDialProduct] = useState('');
+  const [manualDialName, setManualDialName] = useState('Valued Customer');
+  const [manualDialReason, setManualDialReason] = useState<'product_enquiry' | 'order_confirmation' | 'custom_support'>('product_enquiry');
+  const [isDialingManualCall, setIsDialingManualCall] = useState(false);
+  const [isSyncingTrendVibeCatalog, setIsSyncingTrendVibeCatalog] = useState(false);
+  const [lastSyncTimestamp, setLastSyncTimestamp] = useState<string>(new Date().toLocaleTimeString());
 
   // New Product Form State (without Kannada name)
   const initialProductForm: Partial<Product> = {
@@ -709,6 +718,18 @@ export const SellerDashboard: React.FC = () => {
         >
           <DollarSign className="w-4 h-4" />
           <span>Confidential Finance Dashboard</span>
+        </button>
+
+        <button
+          onClick={() => setActiveSubTab('voice_sync')}
+          className={`px-4 py-2.5 rounded-xl transition-all flex items-center gap-2 cursor-pointer ${
+            activeSubTab === 'voice_sync'
+              ? 'bg-purple-700 text-white shadow-xs'
+              : 'bg-purple-50 text-purple-800 hover:bg-purple-100 border border-purple-200 font-bold'
+          }`}
+        >
+          <PhoneCall className="w-4 h-4" />
+          <span>AI Voice Agent & TrendVibe Store Sync</span>
         </button>
       </div>
 
@@ -2775,6 +2796,307 @@ export const SellerDashboard: React.FC = () => {
               >
                 Close Master View
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: AI VOICE AGENT & TRENDVIBE WEBSITE SYNC */}
+      {activeSubTab === 'voice_sync' && (
+        <div className="space-y-6">
+          {/* Seller Access Banner */}
+          <div className="bg-gradient-to-r from-purple-900 via-indigo-950 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-purple-900/40">
+            <div className="space-y-1.5">
+              <div className="inline-flex items-center gap-2 bg-purple-500/20 text-purple-300 text-xs font-bold px-3 py-1 rounded-full border border-purple-400/30">
+                <Sparkles className="w-3.5 h-3.5" />
+                <span>Seller-Only AI Telephony & Website Sync Hub</span>
+              </div>
+              <h2 className="text-xl sm:text-2xl font-extrabold tracking-tight">
+                AI Voice Agent & TrendVibe Store Sync
+              </h2>
+              <p className="text-xs text-purple-200 max-w-2xl leading-relaxed">
+                Directly sync your TrendVibe store catalogue, pricing, and lab documents into the AI Voice Assistant. Trigger outbound phone calls to customers and consultation leads with live store data.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                disabled={isSyncingTrendVibeCatalog}
+                onClick={async () => {
+                  setIsSyncingTrendVibeCatalog(true);
+                  try {
+                    const res = await api.refreshTrendVibeSync();
+                    setLastSyncTimestamp(new Date().toLocaleTimeString());
+                    showToast(res.message || `TrendVibe catalogue synchronized with AI Voice Agent!`, 'success');
+                  } catch (e: any) {
+                    showToast(`Sync note: ${e.message}`, 'info');
+                  } finally {
+                    setIsSyncingTrendVibeCatalog(false);
+                  }
+                }}
+                className="px-4 py-2.5 bg-purple-600 hover:bg-purple-500 disabled:bg-purple-800 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center gap-1.5 cursor-pointer transition-colors"
+              >
+                <RefreshCw className={`w-4 h-4 ${isSyncingTrendVibeCatalog ? 'animate-spin' : ''}`} />
+                <span>{isSyncingTrendVibeCatalog ? 'Syncing Store...' : 'Sync TrendVibe Store Catalogue'}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* 1. Product Detail Syncing Option */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center font-bold">
+                  <Database className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">1. Product Detail Syncing Option</h3>
+                  <p className="text-[11px] text-slate-400">TrendVibe store products, specifications, and lab PDFs indexed into AI Voice memory</p>
+                </div>
+              </div>
+              <span className="text-xs font-mono text-purple-700 font-semibold">
+                Last Synced: {lastSyncTimestamp}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                <span className="text-slate-400 font-medium">Active Store</span>
+                <div className="font-extrabold text-slate-900 text-sm">TrendVibe Store (Live Website DB)</div>
+                <div className="text-[11px] text-emerald-700 font-semibold">● Real-Time Database Connection Active</div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                <span className="text-slate-400 font-medium">AI Voice Memory</span>
+                <div className="font-extrabold text-indigo-700 text-sm">{products.length} Products & {documents.length} Lab PDFs Synced</div>
+                <div className="text-[11px] text-slate-500">Multilingual RAG engine ready (EN / HI / KN)</div>
+              </div>
+
+              <div className="p-4 bg-slate-50 border border-slate-200 rounded-2xl space-y-1">
+                <span className="text-slate-400 font-medium">Telephony Carrier Gateway</span>
+                <div className="font-extrabold text-purple-700 text-sm">Twilio Carrier (+1 763 342 5731)</div>
+                <div className="text-[11px] text-amber-700 font-semibold">● Gateway Simulator Active (KYC Pending)</div>
+              </div>
+            </div>
+
+            {/* Product Catalogue Sync Table */}
+            <div className="space-y-2 pt-2">
+              <div className="flex items-center justify-between text-xs">
+                <span className="font-extrabold text-slate-700 uppercase tracking-wide">
+                  Synced Store Products ({products.length})
+                </span>
+                <span className="text-slate-400 text-[11px]">All items accessible by AI during customer calls</span>
+              </div>
+              <div className="overflow-x-auto max-h-56 overflow-y-auto border border-slate-200 rounded-2xl">
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 bg-slate-100 text-slate-600 font-bold border-b border-slate-200">
+                    <tr>
+                      <th className="p-2.5">Product</th>
+                      <th className="p-2.5">Category</th>
+                      <th className="p-2.5">Price</th>
+                      <th className="p-2.5">Stock</th>
+                      <th className="p-2.5">PDF Lab Data</th>
+                      <th className="p-2.5 text-right">Voice Sync</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 bg-white">
+                    {products.map((p) => (
+                      <tr key={p.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-2.5 font-bold text-slate-900">{p.name}</td>
+                        <td className="p-2.5 text-slate-500">{p.category}</td>
+                        <td className="p-2.5 font-bold text-indigo-700">₹{p.price}</td>
+                        <td className="p-2.5">
+                          <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                            p.stock.available > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                          }`}>
+                            {p.stock.available} on hand
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-slate-500">
+                          {p.pdfDocName || p.pdfExtractedText ? (
+                            <span className="text-emerald-700 font-semibold">Attached ({p.pdfDocName || 'Lab PDF'})</span>
+                          ) : (
+                            <span className="text-slate-400">Catalogue specs</span>
+                          )}
+                        </td>
+                        <td className="p-2.5 text-right">
+                          <span className="px-2 py-0.5 rounded-full bg-purple-100 text-purple-800 text-[10px] font-bold">
+                            Synced
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Seller Manually Trigger Call to Customer */}
+          <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-700 flex items-center justify-center font-bold">
+                  <PhoneCall className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm">2. Seller Manually Trigger Call to Customer</h3>
+                  <p className="text-[11px] text-slate-400">Initiate outbound AI voice telephone calls to leads and enquiries</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Quick Outbound Dialler Box */}
+            <div className="p-4 bg-gradient-to-r from-purple-50/70 to-indigo-50/50 border border-purple-200 rounded-2xl space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="font-extrabold text-slate-800 text-xs flex items-center gap-1.5">
+                  <Phone className="w-3.5 h-3.5 text-purple-700" />
+                  <span>Manual Direct Call Dialler</span>
+                </span>
+                <span className="text-[11px] text-purple-700 font-medium">Places instant AI telephone consultation call</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 text-xs">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Customer Phone:</label>
+                  <input
+                    type="text"
+                    value={manualDialPhone}
+                    onChange={(e) => setManualDialPhone(e.target.value)}
+                    placeholder="+91 72046 18908"
+                    className="w-full bg-white border border-purple-200 p-2 rounded-xl text-xs font-mono font-bold text-slate-800 focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Customer Name:</label>
+                  <input
+                    type="text"
+                    value={manualDialName}
+                    onChange={(e) => setManualDialName(e.target.value)}
+                    placeholder="Chandan Kumar"
+                    className="w-full bg-white border border-purple-200 p-2 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-purple-600"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-600 uppercase mb-1">Product in Focus:</label>
+                  <select
+                    value={manualDialProduct}
+                    onChange={(e) => setManualDialProduct(e.target.value)}
+                    className="w-full bg-white border border-purple-200 p-2 rounded-xl text-xs font-bold text-slate-800 focus:outline-none focus:border-purple-600"
+                  >
+                    <option value="">-- General Store Catalogue --</option>
+                    {products.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name} (₹{p.price})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex items-end">
+                  <button
+                    type="button"
+                    disabled={isDialingManualCall}
+                    onClick={async () => {
+                      if (!manualDialPhone.trim()) {
+                        showToast('Please enter a valid phone number to dial', 'error');
+                        return;
+                      }
+                      setIsDialingManualCall(true);
+                      try {
+                        const targetProd = products.find((p) => p.id === manualDialProduct);
+                        showToast(`Dialing AI voice call to ${manualDialPhone}...`, 'info');
+                        const res = await api.initiateOutboundCall({
+                          to: manualDialPhone.trim(),
+                          customerName: manualDialName.trim(),
+                          callReason: manualDialReason,
+                          productId: targetProd?.id,
+                          customMessage: targetProd ? `Calling regarding your interest in ${targetProd.name}.` : undefined,
+                        });
+
+                        showToast(res.message || `Outbound AI call placed to ${manualDialPhone}!`, 'success');
+                        loadAllData();
+                      } catch (err: any) {
+                        showToast(`Call error: ${err.message}`, 'error');
+                      } finally {
+                        setIsDialingManualCall(false);
+                      }
+                    }}
+                    className="w-full py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 disabled:bg-slate-300 text-white font-extrabold text-xs rounded-xl shadow-md flex items-center justify-center gap-1.5 cursor-pointer transition-all"
+                  >
+                    <PhoneCall className={`w-3.5 h-3.5 ${isDialingManualCall ? 'animate-bounce' : ''}`} />
+                    <span>{isDialingManualCall ? 'Dialing...' : 'Trigger AI Voice Call'}</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Leads Table with Instant Calling */}
+            <div className="space-y-2">
+              <span className="font-extrabold text-slate-700 uppercase tracking-wide text-xs">
+                Store Consultation Leads & Enquiries ({leads.length})
+              </span>
+              <div className="overflow-x-auto border border-slate-200 rounded-2xl">
+                <table className="w-full text-left text-xs">
+                  <thead>
+                    <tr className="bg-slate-50 text-slate-500 font-extrabold border-b border-slate-200">
+                      <th className="p-3">Customer</th>
+                      <th className="p-3">Phone</th>
+                      <th className="p-3">Product Interest</th>
+                      <th className="p-3">Call Status</th>
+                      <th className="p-3">Last AI Summary</th>
+                      <th className="p-3 text-right">Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {leads.map((lead) => (
+                      <tr key={lead.id} className="hover:bg-slate-50 transition-colors">
+                        <td className="p-3 font-bold text-slate-900">{lead.name}</td>
+                        <td className="p-3 font-mono text-slate-700">{lead.mobile}</td>
+                        <td className="p-3 font-semibold text-indigo-700">{lead.productInterest}</td>
+                        <td className="p-3">
+                          <span className={`px-2.5 py-1 rounded-full font-extrabold text-[10px] ${
+                            lead.callStatus === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'
+                          }`}>
+                            {lead.callStatus || 'PENDING'}
+                          </span>
+                        </td>
+                        <td className="p-3 text-slate-600 text-[11px] max-w-xs truncate">
+                          {lead.callSummary || 'Awaiting outbound call trigger'}
+                        </td>
+                        <td className="p-3 text-right">
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              try {
+                                showToast(`Initiating AI voice call to ${lead.name} (${lead.mobile})...`, 'info');
+                                const res = await api.triggerLeadCall(lead.id);
+                                showToast(`AI call triggered successfully for ${lead.name}!`, 'success');
+                                loadAllData();
+                              } catch (e: any) {
+                                showToast(`Failed to trigger call: ${e.message}`, 'error');
+                              }
+                            }}
+                            className="px-3 py-1.5 bg-purple-600 hover:bg-purple-500 text-white font-extrabold text-xs rounded-xl shadow-xs flex items-center gap-1.5 ml-auto cursor-pointer"
+                          >
+                            <PhoneCall className="w-3.5 h-3.5" />
+                            <span>Trigger AI Call</span>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {leads.length === 0 && (
+                      <tr>
+                        <td colSpan={6} className="p-6 text-center text-slate-400">
+                          No customer leads currently recorded. Submit a consultation on the storefront to test manual calling.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         </div>

@@ -929,5 +929,41 @@ export const api = {
       authenticatedAt?: string;
       authenticatedUntil?: string;
     }>(`/api/otp/session?phone=${encodeURIComponent(phone)}`),
+
+  // Seller TrendVibe Store & Voice Agent Sync
+  getTrendVibeSyncStatus: () =>
+    request<{
+      success: boolean;
+      storeName: string;
+      domain: string;
+      totalProducts: number;
+      inStockCount: number;
+      verifiedDocsCount: number;
+      customerLeadsCount: number;
+      voiceAgentBrain: string;
+      telephonyEngine: string;
+      twilioStatus: string;
+      lastSyncedAt: string;
+      products: Array<{
+        id: string;
+        name: string;
+        price: number;
+        stock: number;
+        category: string;
+        hasPdfDoc: boolean;
+        syncedWithVoiceAgent: boolean;
+      }>;
+    }>('/api/seller/trendvibe-sync/status'),
+
+  refreshTrendVibeSync: () =>
+    request<{
+      success: boolean;
+      message: string;
+      totalProducts: number;
+      verifiedDocsCount: number;
+      lastSyncedAt: string;
+    }>('/api/seller/trendvibe-sync/refresh', {
+      method: 'POST',
+    }),
 };
 

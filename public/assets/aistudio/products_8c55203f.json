@@ -1,0 +1,58 @@
+[
+  {
+    "handle": "trendraj-oversized-cotton-tshirt",
+    "title": "TrendRaj Oversized Cotton T-Shirt",
+    "price": "799",
+    "currency": "INR",
+    "stock": "25 in stock",
+    "inventory_qty": 25,
+    "type": "Apparel",
+    "vendor": "TrendRaj",
+    "tags": "tshirt, oversized, cotton, streetwear",
+    "option_name": "Size",
+    "variants": ["M", "L", "XL"],
+    "description": "240 GSM combed cotton oversized crew neck t-shirt with dropped shoulders for breathable everyday comfort."
+  },
+  {
+    "handle": "trendraj-classic-slim-denim-jacket",
+    "title": "TrendRaj Classic Slim Denim Jacket",
+    "price": "2499",
+    "currency": "INR",
+    "stock": "14 in stock",
+    "inventory_qty": 14,
+    "type": "Outerwear",
+    "vendor": "TrendRaj",
+    "tags": "jacket, denim, outerwear",
+    "option_name": "Size",
+    "variants": ["M", "L", "XL"],
+    "description": "Mid-wash stretch cotton denim jacket featuring matte metal buttons and dual chest flap pockets."
+  },
+  {
+    "handle": "trendraj-everyday-crossbody-sling-bag",
+    "title": "TrendRaj Everyday Crossbody Sling Bag",
+    "price": "1299",
+    "currency": "INR",
+    "stock": "18 in stock",
+    "inventory_qty": 18,
+    "type": "Accessories",
+    "vendor": "TrendRaj",
+    "tags": "bag, sling, crossbody, travel",
+    "option_name": "Color",
+    "variants": ["Matte Black", "Olive Green"],
+    "description": "Water-resistant nylon crossbody sling bag with quick-access front zip pocket and adjustable shoulder strap."
+  },
+  {
+    "handle": "trendraj-urban-canvas-sneakers",
+    "title": "TrendRaj Urban Canvas Low-Top Sneakers",
+    "price": "1899",
+    "currency": "INR",
+    "stock": "12 in stock",
+    "inventory_qty": 12,
+    "type": "Footwear",
+    "vendor": "TrendRaj",
+    "tags": "sneakers, canvas, shoes, casual",
+    "option_name": "Size",
+    "variants": ["UK 8", "UK 9", "UK 10"],
+    "description": "Lightweight canvas low-top sneakers with memory-foam cushioned insoles built for all-day walking."
+  }
+]

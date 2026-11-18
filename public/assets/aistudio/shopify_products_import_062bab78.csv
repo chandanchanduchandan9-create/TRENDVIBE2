@@ -1,0 +1,12 @@
+Handle,Title,Body (HTML),Vendor,Type,Tags,Published,Option1 Name,Option1 Value,Variant SKU,Variant Grams,Variant Inventory Tracker,Variant Inventory Qty,Variant Inventory Policy,Variant Fulfillment Service,Variant Price,Variant Requires Shipping,Variant Taxable,Status
+trendraj-oversized-cotton-tshirt,TrendRaj Oversized Cotton T-Shirt,<p>240 GSM combed cotton oversized crew neck t-shirt with dropped shoulders for breathable everyday comfort.</p>,TrendRaj,Apparel,"tshirt, oversized, cotton, streetwear",TRUE,Size,M,TR-OVECOT-01,250,shopify,8,deny,manual,799.00,TRUE,TRUE,active
+trendraj-oversized-cotton-tshirt,,,,,,,,L,TR-OVECOT-02,250,shopify,8,deny,manual,799.00,TRUE,TRUE,
+trendraj-oversized-cotton-tshirt,,,,,,,,XL,TR-OVECOT-03,250,shopify,8,deny,manual,799.00,TRUE,TRUE,
+trendraj-classic-slim-denim-jacket,TrendRaj Classic Slim Denim Jacket,<p>Mid-wash stretch cotton denim jacket featuring matte metal buttons and dual chest flap pockets.</p>,TrendRaj,Outerwear,"jacket, denim, outerwear",TRUE,Size,M,TR-CLASLI-01,250,shopify,4,deny,manual,2499.00,TRUE,TRUE,active
+trendraj-classic-slim-denim-jacket,,,,,,,,L,TR-CLASLI-02,250,shopify,4,deny,manual,2499.00,TRUE,TRUE,
+trendraj-classic-slim-denim-jacket,,,,,,,,XL,TR-CLASLI-03,250,shopify,4,deny,manual,2499.00,TRUE,TRUE,
+trendraj-everyday-crossbody-sling-bag,TrendRaj Everyday Crossbody Sling Bag,<p>Water-resistant nylon crossbody sling bag with quick-access front zip pocket and adjustable shoulder strap.</p>,TrendRaj,Accessories,"bag, sling, crossbody, travel",TRUE,Color,Matte Black,TR-EVECRO-01,250,shopify,9,deny,manual,1299.00,TRUE,TRUE,active
+trendraj-everyday-crossbody-sling-bag,,,,,,,,Olive Green,TR-EVECRO-02,250,shopify,9,deny,manual,1299.00,TRUE,TRUE,
+trendraj-urban-canvas-sneakers,TrendRaj Urban Canvas Low-Top Sneakers,<p>Lightweight canvas low-top sneakers with memory-foam cushioned insoles built for all-day walking.</p>,TrendRaj,Footwear,"sneakers, canvas, shoes, casual",TRUE,Size,UK 8,TR-URBCAN-01,250,shopify,4,deny,manual,1899.00,TRUE,TRUE,active
+trendraj-urban-canvas-sneakers,,,,,,,,UK 9,TR-URBCAN-02,250,shopify,4,deny,manual,1899.00,TRUE,TRUE,
+trendraj-urban-canvas-sneakers,,,,,,,,UK 10,TR-URBCAN-03,250,shopify,4,deny,manual,1899.00,TRUE,TRUE,

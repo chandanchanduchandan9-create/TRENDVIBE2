@@ -3671,10 +3671,77 @@
       "consentTimestamp": "2026-11-17T07:37:00.386Z",
       "source": "lead_acquisition_form",
       "id": "lead-8a1d7dd4",
-      "status": "NEW",
-      "callStatus": "NOT_CALLED",
+      "status": "CONTACTED",
+      "callStatus": "COMPLETED",
       "createdAt": "2026-11-17T07:37:00.388Z",
-      "updatedAt": "2026-11-17T07:37:00.388Z"
+      "updatedAt": "2026-11-18T16:58:06.003Z",
+      "callSid": "CA1795021085361V6WNPM",
+      "callDuration": 64,
+      "interestLevel": "HIGH",
+      "callSummary": "AI Voice Session completed for Test Lead (+919999999999) regarding \"Dolo 650\". We currently have 145 pieces in stock.",
+      "transcript": [
+        {
+          "speaker": "AI Assistant",
+          "text": "Namaskara and hello Test! I am the Customer Enquiry Bot calling from TrendVibe regarding your recent enquiry on Dolo 650 Tablet (Paracetamol 650mg). How can I assist you with the specifications or verified dosage today?",
+          "timestamp": "04:52 PM"
+        },
+        {
+          "speaker": "Customer",
+          "text": "Interested in Dolo 650",
+          "timestamp": "04:52 PM"
+        },
+        {
+          "speaker": "AI Assistant",
+          "text": "We currently have 145 pieces in stock.",
+          "timestamp": "04:52 PM"
+        },
+        {
+          "speaker": "AI Assistant",
+          "text": "Namaskara and hello Test! I am the Customer Enquiry Bot calling from TrendVibe regarding your recent enquiry on Dolo 650 Tablet (Paracetamol 650mg). How can I assist you with the specifications or verified dosage today?",
+          "timestamp": "04:55 PM"
+        },
+        {
+          "speaker": "Customer",
+          "text": "Interested in Dolo 650",
+          "timestamp": "04:55 PM"
+        },
+        {
+          "speaker": "AI Assistant",
+          "text": "We currently have 145 pieces in stock.",
+          "timestamp": "04:55 PM"
+        },
+        {
+          "speaker": "AI Assistant",
+          "text": "Namaskara and hello Test! I am the Customer Enquiry Bot calling from TrendVibe regarding your recent enquiry on Dolo 650 Tablet (Paracetamol 650mg). How can I assist you with the specifications or verified dosage today?",
+          "timestamp": "04:55 PM"
+        },
+        {
+          "speaker": "Customer",
+          "text": "Interested in Dolo 650",
+          "timestamp": "04:55 PM"
+        },
+        {
+          "speaker": "AI Assistant",
+          "text": "We currently have 145 pieces in stock.",
+          "timestamp": "04:55 PM"
+        },
+        {
+          "speaker": "AI Assistant",
+          "text": "Namaskara and hello Test! I am the Customer Enquiry Bot calling from TrendVibe regarding your recent enquiry on Dolo 650 Tablet (Paracetamol 650mg). How can I assist you with the specifications or verified dosage today?",
+          "timestamp": "04:58 PM"
+        },
+        {
+          "speaker": "Customer",
+          "text": "Interested in Dolo 650",
+          "timestamp": "04:58 PM"
+        },
+        {
+          "speaker": "AI Assistant",
+          "text": "We currently have 145 pieces in stock.",
+          "timestamp": "04:58 PM"
+        }
+      ],
+      "googleSheetsRowUrl": "https://docs.google.com/spreadsheets/d/1_Seller_Calling_Ledger_2026/edit#gid=0"
     },
     {
       "name": "Test User",
